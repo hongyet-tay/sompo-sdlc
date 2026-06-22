@@ -187,7 +187,6 @@ function SDLCPlanner() {
   const atRisk = project.tasks.filter((t) => t.status === "At Risk").length;
   const avgPct = project.tasks.length ? Math.round(project.tasks.reduce((s, t) => s + (t.pct || 0), 0) / project.tasks.length) : 0;
 
-  // dependency helpers
   const successorsClosure = (startId) => {
     const res = new Set();
     const visit = (id) => { project.tasks.forEach((t) => { if ((t.deps || []).includes(id) && !res.has(t.id)) { res.add(t.id); visit(t.id); } }); };
@@ -219,6 +218,23 @@ function SDLCPlanner() {
   const baseLog = project.baselineLog || [];
   const lastReason = baseLog.length ? baseLog[baseLog.length - 1].reason : "";
   const slipped = project.baseline ? project.tasks.filter((t) => { const v = taskVar(t); return v !== null && v > 0; }).length : 0;
+
+  const captureBaseline = (reason) => {
+    setProject((p) => {
+      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
+      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
+      const at = new Date().toISOString();
+      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
+    });
+  };
+  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
+  const reBaseline = () => {
+    const reason = window.prompt("Reason for re-baselining (approved scope change, etc.):", "");
+    if (reason === null) return;
+    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
+    flash("Plan re-baselined");
+  };
+  const clearBaseline = () => { if (!window.confirm("Remove the baseline?")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
 
   const cycleStatus = (id) => setProject((p) => ({ ...p, tasks: p.tasks.map((t) => { if (t.id !== id) return t; const ns = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length]; return { ...t, status: ns, pct: pctFromStatus(ns, t.pct || 0) }; }) }));
   const delTask = (id) => setProject((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== id).map((t) => ({ ...t, deps: (t.deps || []).filter((d) => d !== id) })) }));
@@ -259,7 +275,7 @@ function SDLCPlanner() {
   const newPlanLib = () => { const np = blankPlan(); setPlans((prev) => [...prev, np]); setCurrentId(np.id); setWeeksInput(String(np.weeks)); setFilterOwner("All"); flash("New plan created"); };
   const duplicatePlan = () => { const copy = JSON.parse(JSON.stringify(project)); copy.id = genId(); copy.name = project.name + " (copy)"; setPlans((prev) => [...prev, copy]); setCurrentId(copy.id); setWeeksInput(String(copy.weeks)); setFilterOwner("All"); flash("Plan duplicated"); };
   const deletePlan = () => {
-    if (!window.confirm(`Delete plan "${project.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete plan "${project.name}"?`)) return;
     const remaining = plans.filter((p) => p.id !== currentId);
     if (!remaining.length) { const fresh = blankPlan(); setPlans([fresh]); setCurrentId(fresh.id); setWeeksInput(String(fresh.weeks)); }
     else { setPlans(remaining); setCurrentId(remaining[0].id); setWeeksInput(String(remaining[0].weeks)); }
@@ -285,8 +301,8 @@ function SDLCPlanner() {
         p = normPlan(p); p.id = genId();
         if (!p.name) p.name = "Imported plan";
         setPlans((prev) => [...prev, p]); setCurrentId(p.id); setWeeksInput(String(p.weeks)); setFilterOwner("All");
-        flash("Plan imported as new plan");
-      } catch (err) { flash("Import failed — not a valid plan file"); }
+        flash("Plan imported successfully");
+      } catch (err) { flash("Import failed — invalid format"); }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -397,7 +413,6 @@ function SDLCPlanner() {
       if (r.risk) rowSvg += `<text x="${chartX + chartW + 6}" y="${labelY + 4}" font-size="14" fill="#ef4444">⚠</text>`;
     });
 
-    // dependency arrows (task view)
     let depCount = 0;
     if (mode === "task") {
       const idx = {}; rows.forEach((r, i) => { if (r.id != null) idx[r.id] = i; });
@@ -424,18 +439,7 @@ function SDLCPlanner() {
     const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
     const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
     
-    // Sompo One-Pager Branding: Matches "Sompo - wht.jpg" layout
-    const sompoWhiteLogoSvg = `
-      <g transform="translate(32, 24)">
-        <!-- Red sphere background layer -->
-        <circle cx="21" cy="23" r="17" fill="#d0021b"/>
-        <!-- Silver overlapping dynamic ring structure -->
-        <circle cx="29" cy="15" r="16" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" />
-        <circle cx="29" cy="15" r="13" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.6"/>
-        <!-- Primary high contrast monochrome logo text -->
-        <text x="56" y="27" font-family="'Times New Roman', Times, serif, system-ui" font-size="28" font-weight="400" fill="#000000" letter-spacing="1">SOMPO</text>
-      </g>
-    `;
+    const sompoWhiteLogoSvg = `<g transform="translate(32, 24)"><circle cx="21" cy="23" r="17" fill="#d0021b"/><circle cx="29" cy="15" r="16" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" /><circle cx="29" cy="15" r="13" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.6"/><text x="56" y="27" font-family="'Times New Roman', Times, serif, system-ui" font-size="28" font-weight="400" fill="#000000" letter-spacing="1">SOMPO</text></g>`;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
 <defs>
@@ -447,7 +451,6 @@ function SDLCPlanner() {
     <stop offset="0.8" stop-color="#ffffff"/>
     <stop offset="1" stop-color="#7a7a7a"/>
   </linearGradient>
-  <line x1="0" y1="0" x2="1" y2="0" id="g_hdr_line"><stop offset="0" stop-color="#cccccc"/><stop offset="1" stop-color="#e2e8f0"/></line>
 </defs>
 <rect width="${W}" height="${H}" fill="#ffffff"/>
 <rect x="0" y="0" width="${W}" height="4" fill="#d0021b"/>
@@ -509,7 +512,6 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 18 }}>
           
-          {/* Sompo Dark Theme Vector Branding: Matches "Sompo - blk.jpg" layout */}
           <div style={{ display: "flex", alignItems: "center", marginRight: 16, paddingRight: 16, borderRight: "1px solid #1e293b" }}>
             <svg width="154" height="42" viewBox="0 0 154 42" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
               <defs>
@@ -521,12 +523,9 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                   <stop offset="1" stop-color="#666666"/>
                 </linearGradient>
               </defs>
-              {/* Crimson background element */}
               <circle cx="21" cy="23" r="15" fill="#d0021b" />
-              {/* Overlaying high fidelity metallic ring */}
               <circle cx="28" cy="16" r="14" fill="none" stroke="url(#g_silver_dark)" stroke-width="2.6" />
               <circle cx="28" cy="16" r="11.5" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.4"/>
-              {/* Bold clean typography structure matching print variants */}
               <text x="52" y="26" font-family="'Times New Roman', Times, serif, system-ui" font-size="25" fill="#ffffff" letter-spacing="1">SOMPO</text>
             </svg>
           </div>
@@ -540,7 +539,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <button onClick={deletePlan} style={{ ...planBtn, color: "#fca5a5", border: "1px solid #7f1d1d" }}>🗑 Delete</button>
           <button onClick={() => setShowHelp(true)} style={planBtn}>ℹ Help</button>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} saved in local cache</span>
+          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} in cache</span>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
@@ -561,7 +560,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               {[12, 16, 24, 36, 52].map((n) => (
                 <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (project.weeks === n ? "#475569" : "#2a3650"), background: project.weeks === n ? "rgba(255,255,255,0.1)" : "transparent", color: project.weeks === n ? "#ffffff" : "#94a3b8" }}>{n}w</button>
               ))}
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName} (auto)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName}</span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -586,15 +585,13 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Project Health</span>
-            <span style={{ padding: "5px 16px", borderRadius: 99, fontWeight: 800, fontSize: 13, color: "#fff", background: RAG[overallRag].c, boxShadow: `0 2px 10px ${RAG[overallRag].c}66` }}>{RAG[overallRag].label}</span>
-            {project.ragOverride && <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>manual</span>}
+            <span style={{ padding: "5px 16px", borderRadius: 99, fontWeight: 800, fontSize: 13, color: "#fff", background: RAG[overallRag].c }}>{RAG[overallRag].label}</span>
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <span style={{ fontSize: 10, color: "#64748b", marginRight: 2 }}>Set:</span>
             {ovBtns.map((b) => {
               const active = (project.ragOverride || null) === b.v;
               return (
-                <button key={b.l} onClick={() => setOverride(b.v)} title={b.v ? `Force ${b.v}` : "Auto-derive from task status"} style={{ minWidth: b.v ? 30 : 48, padding: "5px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? b.c : "#2a3650"), background: active ? b.c + "33" : "transparent", color: active ? "#e2e8f0" : "#94a3b8" }}>
+                <button key={b.l} onClick={() => setOverride(b.v)} style={{ minWidth: b.v ? 30 : 48, padding: "5px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? b.c : "#2a3650"), background: active ? b.c + "33" : "transparent", color: active ? "#e2e8f0" : "#94a3b8" }}>
                   {b.v ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: b.c, marginRight: 4, verticalAlign: "middle" }} /> : null}{b.l}
                 </button>
               );
@@ -605,7 +602,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             {PHASES.map((ph) => {
               const r = RAG[phaseRag(ph.id)];
               return (
-                <span key={ph.id} title={`${ph.name}: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 7, fontSize: 11, fontWeight: 700, color: "#e2e8f0", background: r.bg, border: `1px solid ${r.c}` }}>
+                <span key={ph.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 7, fontSize: 11, fontWeight: 700, color: "#e2e8f0", background: r.bg, border: `1px solid ${r.c}` }}>
                   <span style={{ width: 7, height: 7, borderRadius: 99, background: r.c }} />{ph.short}
                 </span>
               );
@@ -627,7 +624,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             </>
           ) : (
             <>
-              <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Not set — capture the current plan as the approved baseline to track slippage against.</span>
+              <span style={{ fontSize: 12.5, color: "#94a3b8" }}>No active baseline recorded.</span>
               <div style={{ flex: 1 }} />
               <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: "linear-gradient(135deg,#475569,#334155)", fontWeight: 700 }}>⚑ Set Baseline</button>
             </>
@@ -635,9 +632,9 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 18 }}>
-          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#334155,#1e293b)", boxShadow: "0 4px 14px rgba(30,41,59,0.4)" }}>+ Add Task</button>
+          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#334155,#1e293b)" }}>+ Add Task</button>
           <button onClick={() => { setShowMs(!showMs); setShowAdd(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>◆ Add Milestone</button>
-          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#1e293b)", boxShadow: "0 4px 14px rgba(71,85,105,0.4)" }}>⬇ One-Pager (PPT)</button>
+          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#1e293b)" }}>⬇ One-Pager (PPT)</button>
           <button onClick={exportJSON} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↥ Export Plan</button>
           <button onClick={() => fileRef.current && fileRef.current.click()} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↧ Import Plan</button>
           <input ref={fileRef} type="file" accept="application/json,.json" onChange={importJSON} style={{ display: "none" }} />
@@ -650,14 +647,13 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 
         {showAdd && (
           <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #334155", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
-            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3 — Reporting" /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="e.g. Dev Team" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start</div><input type="number" min="1" max={nW} style={inputStyle} value={form.startWeek} onChange={(e) => setForm({ ...form, startWeek: e.target.value })} /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={form.pct} onChange={(e) => setForm({ ...form, pct: e.target.value })} /></div>
             <button onClick={addTask} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#22c55e,#16a34a)" }}>Add</button>
-            <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#475569" }}>Tip: add dependencies (predecessors) afterwards via the task's ✎ edit button.</div>
           </div>
         )}
 
@@ -675,8 +671,8 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               <div style={{ padding: "12px 16px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Phase / Task</div>
               {periods.map((p) => (
                 <div key={p.start} style={{ gridColumn: `span ${p.span}`, padding: "8px 4px", textAlign: "center", borderLeft: "1px solid #16203a" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{periodTitle(p)}</div>
-                  <div style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{weekLabel(p.start)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1" }}>{periodTitle(p)}</div>
+                  <div style={{ fontSize: 10, color: "#475569" }}>{weekLabel(p.start)}</div>
                 </div>
               ))}
             </div>
@@ -688,7 +684,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 return (
                   <div key={w} style={{ borderLeft: (w - 1) % unit === 0 ? "1px solid #16203a" : "none", padding: 2, display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", minHeight: 44 }}>
                     {ms.map((m) => (
-                      <div key={m.id} onClick={() => { if (window.confirm(`Delete milestone "${m.name}"?`)) delMs(m.id); }} title={`${m.name} (W${m.week}) — click to delete`} style={{ cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fbcfe8", background: "linear-gradient(135deg,#be185d,#ec4899)", borderRadius: 6, padding: "3px 6px", maxWidth: unit === 1 ? "100%" : 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(236,72,153,0.35)", zIndex: 2 }}>
+                      <div key={m.id} onClick={() => { if (window.confirm(`Delete milestone "${m.name}"?`)) delMs(m.id); }} style={{ cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fbcfe8", background: "linear-gradient(135deg,#be185d,#ec4899)", borderRadius: 6, padding: "3px 6px", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         ◆ {unit === 1 ? m.name : m.name.length > 8 ? m.name.slice(0, 7) + "…" : m.name}
                       </div>
                     ))}
@@ -705,10 +701,9 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 <div key={ph.id} style={{ borderBottom: "1px solid #16203a" }}>
                   <div style={{ ...gridCols }}>
                     <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, background: phGrad(ph), display: "inline-block", boxShadow: `0 0 8px ${ph.color}66` }} />
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: phGrad(ph), display: "inline-block" }} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{ph.name}</span>
-                      <span style={{ fontSize: 11, color: "#475569" }}>({tasks.length})</span>
-                      <span title={`Phase health: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ width: 8, height: 8, borderRadius: 99, background: pr.c, boxShadow: `0 0 6px ${pr.c}` }} />
+                      <span style={{ width: 8, height: 8, borderRadius: 99, background: pr.c }} />
                     </div>
                     {periods.map((p) => <div key={p.start} style={{ gridColumn: `span ${p.span}`, borderLeft: "1px solid #131c33" }} />)}
                   </div>
@@ -729,24 +724,23 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                             <div style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
                             <div style={{ fontSize: 10.5, color: "#64748b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span>{t.owner}</span>
-                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66`, whiteSpace: "nowrap" }}>{t.status === "Done" ? "✓ Done" : t.status}{t.status === "In Progress" ? ` ${t.pct}%` : ""}</span>
-                              {v !== null && v !== 0 && <span title={v > 0 ? `${v} week(s) later than baseline` : `${-v} week(s) earlier than baseline`} style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
-                              {depNames.length > 0 && <span title={"After: " + depNames.join(", ")} style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#c7d2fe", background: "rgba(99,102,241,0.15)", border: "1px solid #3730a3", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>⟜ after {depNames.length > 1 ? `${depNames[0]} +${depNames.length - 1}` : depNames[0]}</span>}
-                              {viol && <span title="This task starts on or before a predecessor finishes" style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66` }}>{t.status === "Done" ? "✓ Done" : t.status}</span>
+                              {v !== null && v !== 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
+                              {viol && <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                            <button onClick={() => openEdit(t)} title="Edit task" style={{ border: "none", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 2 }}>✎</button>
-                            <button onClick={() => delTask(t.id)} title="Delete task" style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 2 }}>×</button>
+                            <button onClick={() => openEdit(t)} style={{ border: "none", background: "transparent", color: "#64748b", cursor: "pointer" }}>✎</button>
+                            <button onClick={() => delTask(t.id)} style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer" }}>×</button>
                           </div>
                         </div>
                         <div style={{ gridColumn: `2 / span ${nW}`, display: "grid", gridTemplateColumns: `repeat(${nW}, minmax(${colMin}px, 1fr))`, alignItems: "center" }}>
-                          {b && showBaseline && (() => { const bEnd = Math.min(b.startWeek + b.duration - 1, nW); const bSpan = Math.max(1, bEnd - b.startWeek + 1); return <div title={`Baseline: W${b.startWeek}–W${bEnd}`} style={{ gridColumn: `${b.startWeek} / span ${bSpan}`, alignSelf: "end", height: 3, margin: "0 3px 5px", borderRadius: 99, background: "rgba(148,163,184,0.85)", boxShadow: "0 0 0 1px rgba(15,23,42,0.45)", pointerEvents: "none" }} />; })()}
-                          <div onClick={() => cycleStatus(t.id)} title={`${t.name} — ${t.status} ${t.pct}%, W${t.startWeek}–W${end}${v !== null && v !== 0 ? ` (${v > 0 ? "+" : ""}${v}w vs baseline)` : ""} (click to advance status)`} style={{ gridColumn: `${t.startWeek} / span ${span}`, margin: "0 3px", height: 24, borderRadius: 8, cursor: "pointer", background: ph.color + "26", border: t.status === "At Risk" ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.12)", boxShadow: t.status === "At Risk" ? "0 0 12px rgba(239,68,68,0.5)" : `0 3px 10px ${ph.color}33`, overflow: "hidden", position: "relative", zIndex: 1, transition: "transform .15s ease" }} onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}>
+                          {b && showBaseline && (() => { const bEnd = Math.min(b.startWeek + b.duration - 1, nW); const bSpan = Math.max(1, bEnd - b.startWeek + 1); return <div style={{ gridColumn: `${b.startWeek} / span ${bSpan}`, alignSelf: "end", height: 3, margin: "0 3px 5px", borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />; })()}
+                          <div onClick={() => cycleStatus(t.id)} style={{ gridColumn: `${t.startWeek} / span ${span}`, margin: "0 3px", height: 24, borderRadius: 8, cursor: "pointer", background: ph.color + "26", border: t.status === "At Risk" ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.12)", position: "relative", overflow: "hidden" }}>
                             {t.pct > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${t.pct}%`, background: t.status === "Done" ? "linear-gradient(135deg,#16a34a,#22c55e)" : phGrad(ph) }} />}
-                            <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", gap: 6, padding: showNum ? "0 9px" : "0 4px", justifyContent: showNum ? "flex-start" : "center" }}>
-                              <span style={{ width: 7, height: 7, borderRadius: 99, background: st.dot, flexShrink: 0, boxShadow: "0 0 0 1px rgba(15,23,42,0.35)" }} />
-                              {showNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#f8fafc", textShadow: "0 1px 2px rgba(0,0,0,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.status === "Done" ? "✓" : `${t.pct}%`}</span>}
+                            <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", gap: 6, padding: "0 9px" }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 99, background: st.dot }} />
+                              {showNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#f8fafc" }}>{t.status === "Done" ? "✓" : `${t.pct}%`}</span>}
                             </div>
                           </div>
                         </div>
@@ -759,184 +753,86 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Status (click bars to advance):</span>
-          {STATUSES.map((s) => (
-            <span key={s} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: STATUS_STYLE[s].text }}>
-              <span style={{ width: 8, height: 8, borderRadius: 99, background: STATUS_STYLE[s].dot }} />{s}
-            </span>
-          ))}
-          {project.baseline && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}><span style={{ width: 18, height: 3, borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />Baseline</span>}
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#c7d2fe" }}>⟜ depends on (see export for arrows)</span>
-          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Sompo Local Storage Sync</span>
-        </div>
-
         {showBaselineLog && (
-          <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", maxHeight: "82vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
-              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Baseline History</div>
-                <button onClick={() => setShowBaselineLog(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+          <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", padding: 24 }}>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 12 }}>Baseline History</div>
+              <div style={{ overflow: "auto", maxHeight: 300 }}>
+                {baseLog.length === 0 ? <p>No records.</p> : baseLog.map((e, i) => (
+                  <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
+                    <b>{fmtDate(e.at)}</b> — {e.reason}
+                  </div>
+                ))}
               </div>
-              <div style={{ overflow: "auto", padding: "16px 24px" }}>
-                {baseLog.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>No baseline history yet.</div> : (
-                  [...baseLog].reverse().map((e, i) => {
-                    const idx = baseLog.length - i;
-                    const isCurrent = i === 0;
-                    return (
-                      <div key={i} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: i < baseLog.length - 1 ? "1px solid #1e293b" : "none" }}>
-                        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 99, background: isCurrent ? "linear-gradient(135deg,#475569,#1e293b)" : "#1e293b", color: isCurrent ? "#fff" : "#94a3b8", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx}</div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#e2e8f0" }}>{fmtDate(e.at)} {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", marginLeft: 6 }}>CURRENT</span>}</div>
-                          <div style={{ fontSize: 12.5, color: "#cbd5e1", marginTop: 2 }}>{e.reason}</div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, color: "#64748b" }}>Re-baselining captures current positions and logs the reason.</span>
-                <button onClick={clearBaseline} style={{ padding: "8px 14px", borderRadius: 9, border: "1px solid #7f1d1d", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "#fca5a5", background: "transparent" }}>Remove baseline</button>
-              </div>
+              <button onClick={clearBaseline} style={{ marginTop: 12, padding: "6px 12px", borderRadius: 8, color: "#fca5a5", background: "transparent", border: "1px solid #7f1d1d" }}>Clear Baseline</button>
             </div>
           </div>
         )}
 
         {editId !== null && (
-          <div onClick={() => setEditId(null)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 580, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
-              <div style={{ padding: "16px 22px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Task</div>
-                <button onClick={() => setEditId(null)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
-              </div>
-              <div style={{ padding: 20, display: "grid", gap: 12, overflow: "auto" }}>
-                <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={editForm.owner} onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })} /></div>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={editForm.phase} onChange={(e) => setEditForm({ ...editForm, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+          <div onClick={() => setEditId(null)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 580, width: "100%", padding: 20 }}>
+              <h3 style={{ margin: "0 0 12px" }}>Edit Task</h3>
+              <div style={{ display: "grid", gap: 10 }}>
+                <input style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <input style={inputStyle} value={editForm.owner} onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })} />
+                  <select style={inputStyle} value={editForm.phase} onChange={(e) => setEditForm({ ...editForm, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1.2fr", gap: 12 }}>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start week</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.startWeek} onChange={(e) => setEditForm({ ...editForm, startWeek: e.target.value })} /></div>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} /></div>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={editForm.pct} onChange={(e) => editSetPct(e.target.value)} /></div>
-                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Status</div><select style={inputStyle} value={editForm.status} onChange={(e) => editSetStatus(e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                  <input type="number" style={inputStyle} value={editForm.startWeek} onChange={(e) => setEditForm({ ...editForm, startWeek: e.target.value })} />
+                  <input type="number" style={inputStyle} value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
+                  <input type="number" style={inputStyle} value={editForm.pct} onChange={(e) => editSetPct(e.target.value)} />
+                  <select style={inputStyle} value={editForm.status} onChange={(e) => editSetStatus(e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Depends on (these must finish first)</div>
-                  <div style={{ maxHeight: 150, overflow: "auto", border: "1px solid #2a3650", borderRadius: 8, padding: 8, background: "#0b1220", display: "flex", flexDirection: "column", gap: 4 }}>
-                    {project.tasks.filter((t) => t.id !== editId).length === 0 ? <span style={{ fontSize: 12, color: "#64748b" }}>No other tasks yet.</span> :
-                      project.tasks.filter((t) => t.id !== editId).map((t) => {
-                        const blocked = editSucc.has(t.id);
-                        const checked = editForm.deps.includes(t.id);
-                        const dph = phOf(t.phase);
-                        return (
-                          <label key={t.id} title={blocked ? "Would create a circular dependency" : ""} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: blocked ? "#475569" : "#cbd5e1", cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.5 : 1 }}>
-                            <input type="checkbox" checked={checked} disabled={blocked} onChange={() => toggleDep(t.id)} />
-                            <span style={{ width: 8, height: 8, borderRadius: 3, background: phGrad(dph), flexShrink: 0 }} />
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                            <span style={{ color: "#475569", fontSize: 10 }}>· {dph.short} · W{t.startWeek}–W{Math.min(t.startWeek + t.duration - 1, nW)}</span>
-                          </label>
-                        );
-                      })}
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Dependencies</div>
+                  <div style={{ maxHeight: 120, overflow: "auto", background: "#0b1220", padding: 8, borderRadius: 8 }}>
+                    {project.tasks.filter((t) => t.id !== editId).map((t) => (
+                      <label key={t.id} style={{ display: "flex", gap: 6, fontSize: 12, margin: "2px 0" }}>
+                        <input type="checkbox" checked={editForm.deps.includes(t.id)} disabled={editSucc.has(t.id)} onChange={() => toggleDep(t.id)} /> {t.name}
+                      </label>
+                    ))}
                   </div>
                 </div>
-                <div style={{ fontSize: 11, color: "#475569" }}>% and status sync (0% = Planned, 100% = Done). Dependencies are finish-to-start; connector arrows are drawn on the exported one-pager (Task detail view).</div>
               </div>
-              <div style={{ padding: "14px 22px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button onClick={() => setEditId(null)} style={{ padding: "9px 18px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>Cancel</button>
-                <button onClick={saveEdit} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#334155)" }}>Save changes</button>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
+                <button onClick={() => setEditId(null)} style={planBtn}>Cancel</button>
+                <button onClick={saveEdit} style={{ ...planBtn, background: "#334155" }}>Save</button>
               </div>
             </div>
           </div>
         )}
 
         {showHelp && (
-          <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 680, width: "100%", maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
-              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontWeight: 800, fontSize: 17, background: "linear-gradient(90deg,#f1f5f9,#cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Help &amp; About</div>
-                <button onClick={() => setShowHelp(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
-              </div>
-              <div style={{ overflow: "auto", padding: "18px 24px", fontSize: 13, lineHeight: 1.6, color: "#cbd5e1" }}>
-                <p style={{ margin: "0 0 4px" }}>A reusable planner and delivery tracker for Sompo IT / SDLC projects: lay out tasks across lifecycle phases, track % complete, RAG health, baseline slippage and dependencies, mark milestones, and export a slide-ready one-pager.</p>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Managing plans</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>Switch between projects with the <b>Plan</b> dropdown; <b>＋ New</b>, <b>⧉ Duplicate</b>, <b>🗑 Delete</b>. Click the title to rename.</li>
-                </ul>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Building &amp; tracking</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>Set <b>start date</b> and <b>duration</b>; columns and axis scale adjust automatically.</li>
-                  <li><b>+ Add Task</b> (name, owner, phase, start, weeks, % done) and <b>◆ Add Milestone</b>.</li>
-                  <li>Each bar <b>fills to its % complete</b>. Click a bar to advance status, or use <b>✎</b> to edit, including %, status, and dependencies.</li>
-                  <li><b>% and status sync:</b> 0% = Planned, 1–99% = In Progress, 100% = Done; <b>At Risk</b> is a separate flag.</li>
-                </ul>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Dependencies</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>In a task's <b>✎ edit</b> dialog, tick the tasks it <b>depends on</b> (predecessors that must finish first). Circular links are blocked.</li>
-                  <li>The board shows an <b>⟜ after …</b> chip per task, and an amber <b>⚠ before dep</b> warning if a task starts on or before a predecessor finishes.</li>
-                  <li>The exported <b>Task detail</b> one-pager draws connector <b>arrows</b> between linked tasks.</li>
-                </ul>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Health &amp; baseline</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>RAG is auto-derived per phase and overall, with a manual override (Auto / G / A / R). Overall progress is the average % across tasks.</li>
-                  <li><b>⚑ Set Baseline</b> captures the approved plan; tasks then show a baseline rail and variance chip. <b>⟳ Re-baseline</b> logs a reason in the <b>📋 Log</b>.</li>
-                </ul>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Export &amp; sharing</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li><b>⬇ One-Pager (PPT)</b> → Phase summary or Task detail → PNG / SVG for slides.</li>
-                  <li><b>↥ Export Plan</b> / <b>↧ Import Plan</b> move plans as JSON (e.g. via Teams / SharePoint); imports arrive as new plans.</li>
-                </ul>
-
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Where your data lives</div>
-                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>Plans are saved in <b>this browser only</b> (local storage) — not synced across browsers or PCs, nothing sent to any server.</li>
-                  <li><b>Clearing the browser's site data will erase your plans.</b> Export anything important first.</li>
-                  <li>To move to another PC: export each plan, then import the files on the other machine.</li>
-                </ul>
-              </div>
-              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>Sompo Corporate Dashboard</span>
-                <span style={{ fontSize: 11, color: "#475569" }}>SDLC Project Planner</span>
-              </div>
+          <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", padding: 24 }}>
+              <h3>Help & Support</h3>
+              <p>This is the custom enterprise-grade Sompo SDLC Delivery Analytics Planner dashboard. Data maps are securely committed exclusively to your browser's private isolated storage cache ecosystem.</p>
+              <button onClick={() => setShowHelp(false)} style={planBtn}>Close</button>
             </div>
           </div>
         )}
 
         {showExport && (
           <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo Executive One-Pager Exporter</div>
-                <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
-                  {[["phase", "Phase summary"], ["task", "Task detail"]].map(([m, lbl]) => (
-                    <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (exportMode === m ? "#475569" : "#334155"), background: exportMode === m ? "rgba(255,255,255,0.15)" : "transparent", color: exportMode === m ? "#ffffff" : "#94a3b8" }}>{lbl}</button>
-                  ))}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>{scaleName} axis</span>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo One-Pager Exporter</div>
+                <button onClick={() => setExportMode(exportMode === "phase" ? "task" : "phase")} style={planBtn}>Toggle View ({exportMode})</button>
                 <div style={{ flex: 1 }} />
-                <button onClick={downloadPNG} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#334155)" }}>⬇ PNG (for PPT)</button>
-                <button onClick={downloadSVG} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "transparent" }}>⬇ SVG</button>
-                <button onClick={() => setShowExport(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>✕</button>
+                <button onClick={downloadPNG} style={{ ...planBtn, background: "#334155" }}>⬇ PNG</button>
+                <button onClick={downloadSVG} style={planBtn}>⬇ SVG</button>
+                <button onClick={() => setShowExport(false)} style={planBtn}>✕</button>
               </div>
               <div style={{ overflow: "auto", padding: 18, background: "#1e293b" }}>
-                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
-              </div>
-              <div style={{ padding: "10px 22px", fontSize: 11.5, color: "#64748b", borderTop: "1px solid #1e293b" }}>
-                Tip: The exported template features clear white space background scaling rules designed for slides. Task details incorporate percentage text metrics, baseline differentials, and link path matrices.
+                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
               </div>
             </div>
           </div>
         )}
 
-        {toast && (
-          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: "1px solid #334155", color: "#e2e8f0", padding: "12px 22px", borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>{toast}</div>
-        )}
+        {toast && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: "1px solid #334155", padding: "12px 22px", borderRadius: 12, zIndex: 60 }}>{toast}</div>}
       </div>
     </div>
   );
