@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOMPO · SDLC Project Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; }
+  input[type="date"] { color-scheme: dark; }
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ---- SOMPO brand ---- */
+const ACC = "#D6001C", ACCd = "#A30015", ACCb = "#E4002B";
+const ACCgrad = `linear-gradient(135deg,${ACC},${ACCd})`;
+const ACCtint = "rgba(214,0,28,0.22)";
+const ACCedge = "#7f1020";
+const ACCtext = "#ffb0b8";
+
+const PHASES = [
+  { id: "initiation", name: "Initiation", short: "Init", color: "#818cf8", c1: "#6366f1", c2: "#818cf8" },
+  { id: "requirements", name: "Requirements", short: "Reqs", color: "#38bdf8", c1: "#0ea5e9", c2: "#38bdf8" },
+  { id: "design", name: "Design", short: "Design", color: "#2dd4bf", c1: "#14b8a6", c2: "#2dd4bf" },
+  { id: "development", name: "Development", short: "Dev", color: "#a78bfa", c1: "#8b5cf6", c2: "#a78bfa" },
+  { id: "testing", name: "Testing (SIT)", short: "SIT", color: "#fbbf24", c1: "#f59e0b", c2: "#fbbf24" },
+  { id: "uat", name: "UAT", short: "UAT", color: "#fb923c", c1: "#f97316", c2: "#fb923c" },
+  { id: "deployment", name: "Deployment", short: "Deploy", color: "#f472b6", c1: "#ec4899", c2: "#f472b6" },
+  { id: "hypercare", name: "Hypercare", short: "Hyper", color: "#4ade80", c1: "#22c55e", c2: "#4ade80" },
+];
+const phGrad = (p) => `linear-gradient(135deg,${p.c1},${p.c2})`;
+const phOf = (id) => PHASES.find((p) => p.id === id) || PHASES[0];
+
+const STATUSES = ["Planned", "In Progress", "Done", "At Risk"];
+const STATUS_STYLE = {
+  Planned: { text: "#cbd5e1", dot: "#94a3b8" },
+  "In Progress": { text: "#7dd3fc", dot: "#38bdf8" },
+  Done: { text: "#86efac", dot: "#4ade80" },
+  "At Risk": { text: "#fca5a5", dot: "#f87171" },
+};
+
+const RAG = {
+  Red: { c: "#ef4444", bg: "rgba(239,68,68,0.15)", label: "RED" },
+  Amber: { c: "#f59e0b", bg: "rgba(245,158,11,0.15)", label: "AMBER" },
+  Green: { c: "#22c55e", bg: "rgba(34,197,94,0.15)", label: "GREEN" },
+  NA: { c: "#94a3b8", bg: "rgba(148,163,184,0.12)", label: "N/A" },
+};
+
+const genId = () => "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const statusFromPct = (pct, prev) => (prev === "At Risk" ? "At Risk" : pct >= 100 ? "Done" : pct <= 0 ? "Planned" : "In Progress");
+const pctFromStatus = (status, prevPct) => (status === "Done" ? 100 : status === "Planned" ? 0 : status === "In Progress" ? (prevPct > 0 && prevPct < 100 ? prevPct : 50) : prevPct);
+
+const samplePlan = () => ({
+  id: genId(),
+  name: "Core Platform Enhancement",
+  weeks: 12,
+  startDate: "2026-06-15",
+  ragOverride: null,
+  baseline: null,
+  baselineLog: [],
+  tasks: [
+    { id: 1, name: "Project kickoff & charter", owner: "PM", phase: "initiation", startWeek: 1, duration: 1, status: "Done", pct: 100, deps: [] },
+    { id: 2, name: "Stakeholder alignment", owner: "PM", phase: "initiation", startWeek: 1, duration: 2, status: "Done", pct: 100, deps: [] },
+    { id: 3, name: "Business requirements workshops", owner: "BA", phase: "requirements", startWeek: 2, duration: 2, status: "In Progress", pct: 45, deps: [1] },
+    { id: 4, name: "Sign-off BRD", owner: "BA", phase: "requirements", startWeek: 4, duration: 1, status: "Planned", pct: 0, deps: [3] },
+    { id: 5, name: "Solution architecture", owner: "Architect", phase: "design", startWeek: 3, duration: 2, status: "In Progress", pct: 30, deps: [] },
+    { id: 6, name: "Detailed design & API specs", owner: "Architect", phase: "design", startWeek: 4, duration: 2, status: "Planned", pct: 0, deps: [5] },
+    { id: 7, name: "Sprint 1 — Core modules", owner: "Dev Team", phase: "development", startWeek: 5, duration: 2, status: "Planned", pct: 0, deps: [4, 6] },
+    { id: 8, name: "Sprint 2 — Integrations", owner: "Dev Team", phase: "development", startWeek: 7, duration: 2, status: "Planned", pct: 0, deps: [7] },
+    { id: 9, name: "SIT execution", owner: "QA", phase: "testing", startWeek: 8, duration: 2, status: "Planned", pct: 0, deps: [8] },
+    { id: 10, name: "UAT with business users", owner: "BA", phase: "uat", startWeek: 10, duration: 2, status: "Planned", pct: 0, deps: [9] },
+    { id: 11, name: "Production deployment", owner: "DevOps", phase: "deployment", startWeek: 12, duration: 1, status: "Planned", pct: 0, deps: [10] },
+    { id: 12, name: "Hypercare support", owner: "Dev Team", phase: "hypercare", startWeek: 12, duration: 1, status: "Planned", pct: 0, deps: [11] },
+  ],
+  milestones: [
+    { id: 1, name: "BRD Sign-off", week: 4 },
+    { id: 2, name: "Code Freeze", week: 8 },
+    { id: 3, name: "UAT Exit", week: 11 },
+    { id: 4, name: "Go-Live", week: 12 },
+  ],
+});
+
+const blankPlan = () => ({ id: genId(), name: "New IT Project", weeks: 12, startDate: new Date().toISOString().slice(0, 10), ragOverride: null, baseline: null, baselineLog: [], tasks: [], milestones: [] });
+
+const normTask = (t) => ({ ...t, pct: typeof t.pct === "number" ? Math.min(100, Math.max(0, t.pct)) : (t.status === "Done" ? 100 : t.status === "In Progress" ? 50 : 0), deps: Array.isArray(t.deps) ? t.deps : [] });
+const normPlan = (p) => ({ ...p, ragOverride: "ragOverride" in p ? p.ragOverride : null, baseline: "baseline" in p ? p.baseline : null, baselineLog: Array.isArray(p.baselineLog) ? p.baselineLog : [], tasks: (p.tasks || []).map(normTask) });
+
+const LIB_KEY = "sdlc-planner-library-v1";
+const OLD_KEY = "sdlc-planner-v1";
+const MAX_WEEKS = 104;
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return ""; } };
+
+function SDLCPlanner() {
+  const [plans, setPlans] = useState([]);
+  const [currentId, setCurrentId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filterOwner, setFilterOwner] = useState("All");
+  const [showAdd, setShowAdd] = useState(false);
+  const [showMs, setShowMs] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showBaselineLog, setShowBaselineLog] = useState(false);
+  const [showBaseline, setShowBaseline] = useState(true);
+  const [exportMode, setExportMode] = useState("phase");
+  const [editingName, setEditingName] = useState(false);
+  const [weeksInput, setWeeksInput] = useState("");
+  const [form, setForm] = useState({ name: "", owner: "", phase: "requirements", startWeek: 1, duration: 1, pct: 0 });
+  const [msForm, setMsForm] = useState({ name: "", week: 1 });
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", owner: "", phase: "requirements", startWeek: 1, duration: 1, status: "Planned", pct: 0, deps: [] });
+  const [toast, setToast] = useState("");
+  const saveTimer = useRef(null);
+  const fileRef = useRef(null);
+
+  const flash = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2600); };
+
+  useEffect(() => {
+    try {
+      const rawLib = localStorage.getItem(LIB_KEY);
+      if (rawLib) {
+        const lib = JSON.parse(rawLib);
+        if (lib && Array.isArray(lib.plans) && lib.plans.length) {
+          const np = lib.plans.map(normPlan);
+          setPlans(np);
+          const cur = np.find((p) => p.id === lib.currentId) || np[0];
+          setCurrentId(cur.id); setWeeksInput(String(cur.weeks));
+          setLoading(false); return;
+        }
+      }
+      const rawOld = localStorage.getItem(OLD_KEY);
+      let first;
+      if (rawOld) { first = normPlan(JSON.parse(rawOld)); if (!first.id) first.id = genId(); }
+      else { first = samplePlan(); }
+      setPlans([first]); setCurrentId(first.id); setWeeksInput(String(first.weeks));
+    } catch (e) {
+      const s = samplePlan(); setPlans([s]); setCurrentId(s.id); setWeeksInput(String(s.weeks));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (loading || !plans.length) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      try { localStorage.setItem(LIB_KEY, JSON.stringify({ currentId, plans })); } catch (e) { console.error("save failed", e); }
+    }, 500);
+  }, [plans, currentId, loading]);
+
+  const project = plans.find((p) => p.id === currentId) || null;
+  const setProject = (updater) => {
+    setPlans((prev) => prev.map((p) => (p.id === currentId ? (typeof updater === "function" ? updater(p) : updater) : p)));
+  };
+
+  if (loading || !project) {
+    return <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>Loading planner…</div>;
+  }
+
+  const nW = project.weeks;
+  const unit = nW <= 16 ? 1 : nW <= 36 ? 2 : 4;
+  const scaleName = unit === 1 ? "Weekly" : unit === 2 ? "Bi-weekly" : "Monthly (4-wk)";
+  const periods = [];
+  for (let s = 1; s <= nW; s += unit) periods.push({ start: s, span: Math.min(unit, nW - s + 1) });
+
+  const weekDate = (w) => {
+    if (!project.startDate) return null;
+    const d = new Date(project.startDate + "T00:00:00");
+    if (isNaN(d)) return null;
+    d.setDate(d.getDate() + (w - 1) * 7);
+    return d;
+  };
+  const weekLabel = (w) => { const d = weekDate(w); return d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""; };
+  const periodTitle = (p) => {
+    if (unit === 1) return `W${p.start}`;
+    if (unit === 4) { const d = weekDate(p.start); if (d) return d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }); }
+    return `W${p.start}–${p.start + p.span - 1}`;
+  };
+
+  const taskById = (id) => project.tasks.find((t) => t.id === id);
+  const owners = ["All", ...Array.from(new Set(project.tasks.map((t) => t.owner)))];
+  const visible = filterOwner === "All" ? project.tasks : project.tasks.filter((t) => t.owner === filterOwner);
+  const done = project.tasks.filter((t) => t.status === "Done").length;
+  const atRisk = project.tasks.filter((t) => t.status === "At Risk").length;
+  const avgPct = project.tasks.length ? Math.round(project.tasks.reduce((s, t) => s + (t.pct || 0), 0) / project.tasks.length) : 0;
+
+  const successorsClosure = (startId) => {
+    const res = new Set();
+    const visit = (id) => { project.tasks.forEach((t) => { if ((t.deps || []).includes(id) && !res.has(t.id)) { res.add(t.id); visit(t.id); } }); };
+    visit(startId); return res;
+  };
+  const predEndMax = (t) => { const ps = (t.deps || []).map(taskById).filter(Boolean); if (!ps.length) return null; return Math.max(...ps.map((p) => p.startWeek + p.duration - 1)); };
+  const depViolation = (t) => { const e = predEndMax(t); return e !== null && t.startWeek <= e; };
+
+  const phaseRag = (phaseId) => {
+    const ts = project.tasks.filter((t) => t.phase === phaseId);
+    if (!ts.length) return "NA";
+    if (ts.some((t) => t.status === "At Risk")) return "Red";
+    if (ts.every((t) => t.status === "Done")) return "Green";
+    return "Amber";
+  };
+  const autoOverall = () => {
+    const active = PHASES.filter((p) => project.tasks.some((t) => t.phase === p.id));
+    if (!active.length) return "Amber";
+    const rags = active.map((p) => phaseRag(p.id));
+    if (rags.includes("Red")) return "Red";
+    if (rags.every((r) => r === "Green")) return "Green";
+    return "Amber";
+  };
+  const overallRag = project.ragOverride || autoOverall();
+  const setOverride = (val) => setProject((p) => ({ ...p, ragOverride: val }));
+
+  const baseOf = (t) => (project.baseline && project.baseline.tasks ? project.baseline.tasks[t.id] : null);
+  const taskVar = (t) => { const b = baseOf(t); if (!b) return null; return (t.startWeek + t.duration - 1) - (b.startWeek + b.duration - 1); };
+  const baseLog = project.baselineLog || [];
+  const lastReason = baseLog.length ? baseLog[baseLog.length - 1].reason : "";
+  const slipped = project.baseline ? project.tasks.filter((t) => { const v = taskVar(t); return v !== null && v > 0; }).length : 0;
+
+  const captureBaseline = (reason) => {
+    setProject((p) => {
+      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
+      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
+      const at = new Date().toISOString();
+      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
+    });
+  };
+  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
+  const reBaseline = () => {
+    const reason = window.prompt("Reason for re-baselining (e.g. approved scope change, vendor delay, resource change):", "");
+    if (reason === null) return;
+    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
+    flash("Plan re-baselined");
+  };
+  const clearBaseline = () => { if (!window.confirm("Remove the baseline and its history? This cannot be undone.")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
+
+  const cycleStatus = (id) => setProject((p) => ({ ...p, tasks: p.tasks.map((t) => { if (t.id !== id) return t; const ns = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length]; return { ...t, status: ns, pct: pctFromStatus(ns, t.pct || 0) }; }) }));
+  const delTask = (id) => setProject((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== id).map((t) => ({ ...t, deps: (t.deps || []).filter((d) => d !== id) })) }));
+  const delMs = (id) => setProject((p) => ({ ...p, milestones: p.milestones.filter((m) => m.id !== id) }));
+
+  const addTask = () => {
+    if (!form.name.trim() || !form.owner.trim()) return;
+    const id = Math.max(0, ...project.tasks.map((t) => t.id)) + 1;
+    const pct = Math.min(100, Math.max(0, Number(form.pct) || 0));
+    setProject((p) => ({ ...p, tasks: [...p.tasks, { id, name: form.name.trim(), owner: form.owner.trim(), phase: form.phase, startWeek: Math.min(Math.max(1, Number(form.startWeek) || 1), p.weeks), duration: Math.max(1, Number(form.duration) || 1), status: statusFromPct(pct, "Planned"), pct, deps: [] }] }));
+    setForm({ name: "", owner: "", phase: form.phase, startWeek: 1, duration: 1, pct: 0 });
+    setShowAdd(false);
+  };
+  const openEdit = (t) => { setEditId(t.id); setEditForm({ name: t.name, owner: t.owner, phase: t.phase, startWeek: t.startWeek, duration: t.duration, status: t.status, pct: t.pct || 0, deps: [...(t.deps || [])] }); };
+  const saveEdit = () => {
+    if (!editForm.name.trim() || !editForm.owner.trim()) return;
+    setProject((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === editId ? { ...t, name: editForm.name.trim(), owner: editForm.owner.trim(), phase: editForm.phase, startWeek: Math.min(Math.max(1, Number(editForm.startWeek) || 1), p.weeks), duration: Math.max(1, Number(editForm.duration) || 1), status: editForm.status, pct: Math.min(100, Math.max(0, Number(editForm.pct) || 0)), deps: editForm.deps.filter((d) => d !== editId && p.tasks.some((x) => x.id === d)) } : t)) }));
+    setEditId(null);
+  };
+  const editSetPct = (val) => { const pct = Math.min(100, Math.max(0, Number(val) || 0)); setEditForm((f) => ({ ...f, pct, status: statusFromPct(pct, f.status) })); };
+  const editSetStatus = (status) => setEditForm((f) => ({ ...f, status, pct: pctFromStatus(status, f.pct) }));
+  const toggleDep = (id) => setEditForm((f) => ({ ...f, deps: f.deps.includes(id) ? f.deps.filter((x) => x !== id) : [...f.deps, id] }));
+  const addMs = () => {
+    if (!msForm.name.trim()) return;
+    const id = Math.max(0, ...project.milestones.map((m) => m.id)) + 1;
+    setProject((p) => ({ ...p, milestones: [...p.milestones, { id, name: msForm.name.trim(), week: Math.min(Math.max(1, Number(msForm.week) || 1), p.weeks) }] }));
+    setMsForm({ name: "", week: 1 });
+    setShowMs(false);
+  };
+  const applyWeeks = (raw) => {
+    const n = Math.min(Math.max(1, Math.round(Number(raw) || 0)), MAX_WEEKS);
+    if (!n) { setWeeksInput(String(project.weeks)); return; }
+    setWeeksInput(String(n));
+    setProject((p) => ({ ...p, weeks: n, tasks: p.tasks.map((t) => ({ ...t, startWeek: Math.min(t.startWeek, n), duration: Math.min(t.duration, n - Math.min(t.startWeek, n) + 1) })), milestones: p.milestones.map((m) => ({ ...m, week: Math.min(m.week, n) })) }));
+  };
+
+  const switchPlan = (id) => { const p = plans.find((x) => x.id === id); if (!p) return; setCurrentId(id); setWeeksInput(String(p.weeks)); setFilterOwner("All"); };
+  const newPlanLib = () => { const np = blankPlan(); setPlans((prev) => [...prev, np]); setCurrentId(np.id); setWeeksInput(String(np.weeks)); setFilterOwner("All"); flash("New plan created"); };
+  const duplicatePlan = () => { const copy = JSON.parse(JSON.stringify(project)); copy.id = genId(); copy.name = project.name + " (copy)"; setPlans((prev) => [...prev, copy]); setCurrentId(copy.id); setWeeksInput(String(copy.weeks)); setFilterOwner("All"); flash("Plan duplicated"); };
+  const deletePlan = () => {
+    if (!window.confirm(`Delete plan "${project.name}"? This cannot be undone.`)) return;
+    const remaining = plans.filter((p) => p.id !== currentId);
+    if (!remaining.length) { const fresh = blankPlan(); setPlans([fresh]); setCurrentId(fresh.id); setWeeksInput(String(fresh.weeks)); }
+    else { setPlans(remaining); setCurrentId(remaining[0].id); setWeeksInput(String(remaining[0].weeks)); }
+    setFilterOwner("All"); flash("Plan deleted");
+  };
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_plan.json";
+    a.href = URL.createObjectURL(blob); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    flash("Plan exported as JSON");
+  };
+  const importJSON = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        let p = JSON.parse(ev.target.result);
+        if (!p || !Array.isArray(p.tasks) || !Array.isArray(p.milestones) || typeof p.weeks !== "number") throw new Error("bad shape");
+        p = normPlan(p); p.id = genId();
+        if (!p.name) p.name = "Imported plan";
+        setPlans((prev) => [...prev, p]); setCurrentId(p.id); setWeeksInput(String(p.weeks)); setFilterOwner("All");
+        flash("Plan imported as new plan");
+      } catch (err) { flash("Import failed — not a valid plan file"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const buildOnePager = (mode) => {
+    const W = 1280, chartX = 320, chartR = 44;
+    const chartW = W - chartX - chartR;
+    const wkW = chartW / nW;
+    const headerH = 118, ragBandH = 46, axisH = 80, footerH = 60;
+    const axisTop = headerH + ragBandH;
+    let rows = [];
+    if (mode === "phase") {
+      PHASES.forEach((ph) => {
+        const ts = project.tasks.filter((t) => t.phase === ph.id);
+        if (!ts.length) return;
+        const start = Math.min(...ts.map((t) => t.startWeek));
+        const end = Math.min(Math.max(...ts.map((t) => t.startWeek + t.duration - 1)), nW);
+        const dn = ts.filter((t) => t.status === "Done").length;
+        const avg = ts.reduce((s, t) => s + (t.pct || 0), 0) / ts.length / 100;
+        const risk = ts.some((t) => t.status === "At Risk");
+        rows.push({ label: ph.name, sub: `${ts.length} task${ts.length > 1 ? "s" : ""} · ${dn}/${ts.length} done`, start, end, frac: avg, ph, risk });
+      });
+    } else {
+      const order = Object.fromEntries(PHASES.map((p, i) => [p.id, i]));
+      [...project.tasks].sort((a, b) => order[a.phase] - order[b.phase] || a.startWeek - b.startWeek).forEach((t) => {
+        const ph = phOf(t.phase);
+        const b = baseOf(t);
+        rows.push({ id: t.id, label: t.name, sub: t.owner, start: t.startWeek, end: Math.min(t.startWeek + t.duration - 1, nW), status: t.status, pct: t.pct || 0, ph, risk: t.status === "At Risk", deps: t.deps || [], baseStart: b ? b.startWeek : null, baseEnd: b ? Math.min(b.startWeek + b.duration - 1, nW) : null });
+      });
+    }
+    const rowH = mode === "phase" ? 56 : 38;
+    const chartTop = axisTop + axisH;
+    const H = chartTop + rows.length * rowH + footerH + 24;
+    const defs = PHASES.map((p) => `<linearGradient id="g_${p.id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${p.c1}"/><stop offset="1" stop-color="${p.c2}"/></linearGradient>`).join("");
+
+    let ragSvg = "";
+    const bandY = headerH;
+    ragSvg += `<text x="32" y="${bandY + 29}" font-size="11" font-weight="700" letter-spacing="1" fill="#64748b">HEALTH</text>`;
+    const ov = RAG[overallRag];
+    const pillX = 96, pillW = 132;
+    ragSvg += `<rect x="${pillX}" y="${bandY + 12}" width="${pillW}" height="26" rx="13" fill="${ov.c}"/>`;
+    ragSvg += `<text x="${pillX + pillW / 2}" y="${bandY + 29}" text-anchor="middle" font-size="12.5" font-weight="800" fill="#ffffff">${ov.label}</text>`;
+    const chipStart = pillX + pillW + 22;
+    const chipArea = W - 36 - chipStart;
+    const chipGap = 8;
+    const chipW = (chipArea - chipGap * (PHASES.length - 1)) / PHASES.length;
+    PHASES.forEach((ph, i) => {
+      const r = RAG[phaseRag(ph.id)];
+      const x = chipStart + i * (chipW + chipGap);
+      ragSvg += `<rect x="${x}" y="${bandY + 12}" width="${chipW}" height="26" rx="7" fill="${r.bg}" stroke="${r.c}" stroke-width="1.5"/>`;
+      ragSvg += `<circle cx="${x + 13}" cy="${bandY + 25}" r="4" fill="${r.c}"/>`;
+      ragSvg += `<text x="${x + 23}" y="${bandY + 29}" font-size="10.5" font-weight="700" fill="#334155">${esc(ph.short)}</text>`;
+    });
+
+    let grid = "";
+    periods.forEach((p) => {
+      const x = chartX + (p.start - 1) * wkW;
+      const pw = p.span * wkW;
+      grid += `<line x1="${x}" y1="${axisTop + 48}" x2="${x}" y2="${H - footerH - 12}" stroke="#e2e8f0" stroke-width="1"/>`;
+      grid += `<text x="${x + pw / 2}" y="${axisTop + 64}" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">${esc(periodTitle(p))}</text>`;
+      const dl = weekLabel(p.start);
+      if (dl && unit !== 4) grid += `<text x="${x + pw / 2}" y="${axisTop + 77}" text-anchor="middle" font-size="9.5" fill="#94a3b8">${esc(dl)}</text>`;
+      if (unit > 1) for (let w = p.start + 1; w < p.start + p.span; w++) { const sx = chartX + (w - 1) * wkW; grid += `<line x1="${sx}" y1="${chartTop}" x2="${sx}" y2="${H - footerH - 12}" stroke="#f1f5f9" stroke-width="1"/>`; }
+    });
+    grid += `<line x1="${chartX + chartW}" y1="${axisTop + 48}" x2="${chartX + chartW}" y2="${H - footerH - 12}" stroke="#e2e8f0"/>`;
+    let msSvg = "";
+    project.milestones.forEach((m, i) => {
+      const x = chartX + (m.week - 0.5) * wkW;
+      const yD = axisTop + 34;
+      const yT = axisTop + (i % 2 === 0 ? 10 : 24);
+      msSvg += `<line x1="${x}" y1="${yD}" x2="${x}" y2="${H - footerH - 12}" stroke="#ec4899" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.5"/>`;
+      msSvg += `<path d="M ${x} ${yD - 7} L ${x + 7} ${yD} L ${x} ${yD + 7} L ${x - 7} ${yD} Z" fill="#ec4899"/>`;
+      msSvg += `<text x="${x}" y="${yT}" text-anchor="middle" font-size="11" font-weight="700" fill="#be185d">${esc(m.name)}</text>`;
+    });
+    let todaySvg = "";
+    if (project.startDate) {
+      const sd = new Date(project.startDate + "T00:00:00");
+      if (!isNaN(sd)) {
+        const frac = (Date.now() - sd.getTime()) / (nW * 7 * 86400000);
+        if (frac >= 0 && frac <= 1) { const x = chartX + frac * chartW; todaySvg = `<line x1="${x}" y1="${axisTop + 48}" x2="${x}" y2="${H - footerH - 12}" stroke="#ef4444" stroke-width="2"/><text x="${x + 5}" y="${axisTop + 58}" font-size="10" font-weight="700" fill="#ef4444">TODAY</text>`; }
+      }
+    }
+    let rowSvg = "";
+    rows.forEach((r, i) => {
+      const y = chartTop + i * rowH;
+      if (i % 2 === 1) rowSvg += `<rect x="20" y="${y}" width="${W - 40}" height="${rowH}" fill="#fdf2f4"/>`;
+      const labelY = y + rowH / 2;
+      rowSvg += `<text x="${chartX - 16}" y="${labelY - 2}" text-anchor="end" font-size="${mode === "phase" ? 14 : 12}" font-weight="700" fill="#1e293b">${esc(r.label.length > 34 ? r.label.slice(0, 33) + "…" : r.label)}</text>`;
+      rowSvg += `<text x="${chartX - 16}" y="${labelY + 12}" text-anchor="end" font-size="10.5" fill="#64748b">${esc(r.sub)}</text>`;
+      const bx = chartX + (r.start - 1) * wkW + 2;
+      const bw = Math.max(wkW * (r.end - r.start + 1) - 4, 14);
+      const bh = mode === "phase" ? 26 : 20;
+      const by = y + (rowH - bh) / 2;
+      if (mode === "phase") {
+        rowSvg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="7" fill="url(#g_${r.ph.id})" opacity="0.28"/>`;
+        if (r.frac > 0) rowSvg += `<rect x="${bx}" y="${by}" width="${Math.max(bw * r.frac, 8)}" height="${bh}" rx="7" fill="url(#g_${r.ph.id})"/>`;
+        rowSvg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="7" fill="none" stroke="${r.risk ? "#ef4444" : r.ph.c1}" stroke-width="${r.risk ? 2.5 : 1}"/>`;
+        rowSvg += `<text x="${bx + bw + 8}" y="${by + bh / 2 + 4}" font-size="11" font-weight="700" fill="#475569">${Math.round(r.frac * 100)}%</text>`;
+      } else {
+        const isDone = r.status === "Done";
+        rowSvg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6" fill="url(#g_${r.ph.id})" opacity="0.22"/>`;
+        if (r.pct > 0) rowSvg += `<rect x="${bx}" y="${by}" width="${Math.max(bw * r.pct / 100, 4)}" height="${bh}" rx="6" fill="${isDone ? "#22c55e" : `url(#g_${r.ph.id})`}"/>`;
+        if (r.risk) rowSvg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="6" fill="none" stroke="#ef4444" stroke-width="2.5"/>`;
+        if (bw >= 30) rowSvg += `<text x="${bx + 6}" y="${by + bh / 2 + 4}" font-size="10" font-weight="800" fill="#0f172a">${isDone ? "✓" : r.pct + "%"}</text>`;
+        if (r.baseStart) { const gx = chartX + (r.baseStart - 1) * wkW + 2; const gw = Math.max(wkW * (r.baseEnd - r.baseStart + 1) - 4, 8); rowSvg += `<rect x="${gx}" y="${by + bh + 3}" width="${gw}" height="3" rx="1.5" fill="#94a3b8"/>`; }
+      }
+      if (r.risk) rowSvg += `<text x="${chartX + chartW + 6}" y="${labelY + 4}" font-size="14" fill="#ef4444">⚠</text>`;
+    });
+
+    let depCount = 0;
+    if (mode === "task") {
+      const idx = {}; rows.forEach((r, i) => { if (r.id != null) idx[r.id] = i; });
+      rows.forEach((r) => {
+        (r.deps || []).forEach((pid) => {
+          if (!(pid in idx)) return;
+          const pr = rows[idx[pid]];
+          const py = chartTop + idx[pid] * rowH + rowH / 2;
+          const sy = chartTop + idx[r.id] * rowH + rowH / 2;
+          const px = chartX + pr.end * wkW;
+          const sx = chartX + (r.start - 1) * wkW;
+          const turn = px + 9;
+          rowSvg += `<path d="M ${px} ${py} H ${turn} V ${sy} H ${sx}" fill="none" stroke="#475569" stroke-width="1.2" opacity="0.65"/>`;
+          rowSvg += `<path d="M ${sx} ${sy} l -7 -3.5 l 0 7 z" fill="#475569" opacity="0.85"/>`;
+          depCount++;
+        });
+      });
+    }
+
+    let counts = STATUSES.map((s) => `${s}: ${project.tasks.filter((t) => t.status === s).length}`).join("    ·    ");
+    if (mode === "task" && project.baseline) counts += "        ▬ baseline";
+    if (mode === "task" && depCount) counts += "        → dependency";
+    const range = project.startDate ? `${weekLabel(1)} – ${weekLabel(nW)} ${weekDate(nW) ? weekDate(nW).getFullYear() : ""}` : `${nW} weeks`;
+    const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
+    const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
+<defs>${defs}<linearGradient id="g_hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${ACCd}"/><stop offset="0.5" stop-color="${ACC}"/><stop offset="1" stop-color="${ACCb}"/></linearGradient></defs>
+<rect width="${W}" height="${H}" fill="#ffffff"/>
+<rect x="0" y="0" width="${W}" height="6" fill="url(#g_hdr)"/>
+<text x="32" y="38" font-size="20" font-weight="900" letter-spacing="1.5" fill="${ACC}">SOMPO</text>
+<rect x="120" y="24" width="1.5" height="18" fill="#cbd5e1"/>
+<text x="134" y="38" font-size="11" font-weight="700" letter-spacing="2" fill="#94a3b8">IT DELIVERY</text>
+<text x="32" y="72" font-size="26" font-weight="800" fill="#0f172a">${esc(project.name)}</text>
+<text x="32" y="96" font-size="12.5" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
+<text x="${W - 36}" y="52" text-anchor="end" font-size="32" font-weight="800" fill="${ACC}">${avgPct}%</text>
+<text x="${W - 36}" y="74" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
+${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
+<line x1="20" y1="${H - footerH}" x2="${W - 20}" y2="${H - footerH}" stroke="#e2e8f0"/>
+<text x="32" y="${H - footerH + 26}" font-size="11.5" fill="#475569">${esc(counts)}</text>
+<text x="${W - 36}" y="${H - footerH + 26}" text-anchor="end" font-size="10.5" fill="#94a3b8">SOMPO · Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</text>
+</svg>`;
+  };
+
+  const downloadPNG = () => {
+    const svg = buildOnePager(exportMode);
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = 2;
+        const c = document.createElement("canvas");
+        c.width = img.width * scale; c.height = img.height * scale;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+        const a = document.createElement("a");
+        a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.png";
+        a.href = c.toDataURL("image/png"); a.click();
+      } catch (e) { console.error("PNG export failed", e); }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { console.error("SVG load failed"); URL.revokeObjectURL(url); };
+    img.src = url;
+  };
+  const downloadSVG = () => {
+    const svg = buildOnePager(exportMode);
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const a = document.createElement("a");
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.svg";
+    a.href = URL.createObjectURL(blob); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+
+  const colMin = unit === 1 ? 52 : unit === 2 ? 30 : 18;
+  const gridCols = { display: "grid", gridTemplateColumns: `220px repeat(${nW}, minmax(${colMin}px, 1fr))` };
+  const boardMinWidth = 220 + nW * colMin;
+  const inputStyle = { background: "#111827", border: "1px solid #2a3650", borderRadius: 8, padding: "8px 10px", color: "#e2e8f0", fontSize: 13, outline: "none", width: "100%" };
+  const previewSvg = showExport ? buildOnePager(exportMode).replace(/width="1280" height="\d+"/, `width="100%"`) : "";
+  const ovBtns = [{ v: null, l: "Auto", c: ACC }, { v: "Green", l: "G", c: "#22c55e" }, { v: "Amber", l: "A", c: "#f59e0b" }, { v: "Red", l: "R", c: "#ef4444" }];
+  const planBtn = { padding: "7px 13px", borderRadius: 9, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" };
+  const editSucc = editId !== null ? successorsClosure(editId) : new Set();
+  const selBtn = (active) => ({ border: "1px solid " + (active ? ACC : "#2a3650"), background: active ? ACCtint : "transparent", color: active ? ACCtext : "#94a3b8" });
+
+  return (
+    <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(214,0,28,0.16), transparent), radial-gradient(900px 500px at -10% 110%, rgba(214,0,28,0.08), transparent), #0a0e1a", color: "#e2e8f0", padding: "0 0 60px" }}>
+      <div style={{ height: 5, background: `linear-gradient(90deg,${ACCd},${ACC},${ACCb})` }} />
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "22px 20px 0" }}>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "10px 14px", marginBottom: 18 }}>
+          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1.5, color: ACC }}>SOMPO</span>
+          <span style={{ width: 1, height: 18, background: "#334155" }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8" }}>Plan</span>
+          <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 220, maxWidth: 360, fontWeight: 700, padding: "7px 10px" }}>
+            {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button onClick={newPlanLib} style={planBtn}>＋ New</button>
+          <button onClick={duplicatePlan} style={planBtn}>⧉ Duplicate</button>
+          <button onClick={deletePlan} style={{ ...planBtn, color: "#fca5a5", border: "1px solid #7f1d1d" }}>🗑 Delete</button>
+          <button onClick={() => setShowHelp(true)} style={planBtn}>ℹ Help</button>
+          <div style={{ flex: 1 }} />
+          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} saved in this browser</span>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: ACC, fontWeight: 800, marginBottom: 6 }}>SDLC Project Planner</div>
+            {editingName ? (
+              <input autoFocus value={project.name} onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))} onBlur={() => setEditingName(false)} onKeyDown={(e) => e.key === "Enter" && setEditingName(false)} style={{ ...inputStyle, fontSize: 26, fontWeight: 800, width: 420, maxWidth: "80vw" }} />
+            ) : (
+              <h1 onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 30, fontWeight: 800, margin: 0, cursor: "pointer", background: `linear-gradient(90deg,#ffffff,#ff6b78)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                {project.name} <span style={{ fontSize: 14, WebkitTextFillColor: "#475569" }}>✎</span>
+              </h1>
+            )}
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+              <label style={{ fontSize: 12, color: "#94a3b8" }}>Start:</label>
+              <input type="date" value={project.startDate || ""} onChange={(e) => setProject((p) => ({ ...p, startDate: e.target.value }))} style={{ ...inputStyle, width: 150, padding: "5px 8px" }} />
+              <label style={{ fontSize: 12, color: "#94a3b8" }}>Duration (weeks):</label>
+              <input type="number" min="1" max={MAX_WEEKS} value={weeksInput} onChange={(e) => setWeeksInput(e.target.value)} onBlur={(e) => applyWeeks(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyWeeks(e.target.value)} style={{ ...inputStyle, width: 76, padding: "5px 8px", textAlign: "center", fontWeight: 700 }} />
+              {[12, 16, 24, 36, 52].map((n) => (
+                <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", ...selBtn(project.weeks === n) }}>{n}w</button>
+              ))}
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName} (auto)</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {[
+              { label: "Avg Progress", value: avgPct + "%", sub: `${done}/${project.tasks.length} done`, grad: ACCgrad },
+              { label: "At Risk", value: atRisk, sub: atRisk ? "needs attention" : "all clear", grad: atRisk ? "linear-gradient(135deg,#ef4444,#f97316)" : "linear-gradient(135deg,#22c55e,#4ade80)" },
+              { label: "Milestones", value: project.milestones.length, sub: "tracked", grad: "linear-gradient(135deg,#ec4899,#f472b6)" },
+            ].map((k) => (
+              <div key={k.label} style={{ background: "rgba(17,24,39,0.7)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 18px", minWidth: 110 }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, background: k.grad, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: 8, background: "#1e293b", borderRadius: 99, overflow: "hidden", marginBottom: 18 }}>
+          <div style={{ height: "100%", width: avgPct + "%", background: `linear-gradient(90deg,${ACCd},${ACC},${ACCb})`, borderRadius: 99, transition: "width .6s ease" }} />
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Project Health</span>
+            <span style={{ padding: "5px 16px", borderRadius: 99, fontWeight: 800, fontSize: 13, color: "#fff", background: RAG[overallRag].c, boxShadow: `0 2px 10px ${RAG[overallRag].c}66` }}>{RAG[overallRag].label}</span>
+            {project.ragOverride && <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>manual</span>}
+          </div>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <span style={{ fontSize: 10, color: "#64748b", marginRight: 2 }}>Set:</span>
+            {ovBtns.map((b) => {
+              const active = (project.ragOverride || null) === b.v;
+              return (
+                <button key={b.l} onClick={() => setOverride(b.v)} title={b.v ? `Force ${b.v}` : "Auto-derive from task status"} style={{ minWidth: b.v ? 30 : 48, padding: "5px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? b.c : "#2a3650"), background: active ? b.c + "33" : "transparent", color: active ? "#e2e8f0" : "#94a3b8" }}>
+                  {b.v ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: b.c, marginRight: 4, verticalAlign: "middle" }} /> : null}{b.l}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {PHASES.map((ph) => {
+              const r = RAG[phaseRag(ph.id)];
+              return (
+                <span key={ph.id} title={`${ph.name}: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 7, fontSize: 11, fontWeight: 700, color: "#e2e8f0", background: r.bg, border: `1px solid ${r.c}` }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 99, background: r.c }} />{ph.short}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "10px 16px", marginBottom: 18 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Baseline</span>
+          {project.baseline ? (
+            <>
+              <span style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 600 }}>Set {fmtDate(project.baseline.capturedAt)}</span>
+              {lastReason && <span style={{ fontSize: 11.5, color: "#64748b", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {lastReason}</span>}
+              {slipped > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, color: "#fca5a5", background: "rgba(239,68,68,0.15)", border: "1px solid #7f1d1d" }}>{slipped} task{slipped !== 1 ? "s" : ""} slipped</span>}
+              <div style={{ flex: 1 }} />
+              <button onClick={() => setShowBaseline((v) => !v)} style={{ ...planBtn, color: showBaseline ? "#5eead4" : "#94a3b8", border: "1px solid " + (showBaseline ? "rgba(45,212,191,0.4)" : "#334155") }}>{showBaseline ? "👁 Baseline shown" : "Baseline hidden"}</button>
+              <button onClick={() => setShowBaselineLog(true)} style={planBtn}>📋 Log ({baseLog.length})</button>
+              <button onClick={reBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: "linear-gradient(135deg,#f59e0b,#f97316)", fontWeight: 700 }}>⟳ Re-baseline</button>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Not set — capture the current plan as the approved baseline to track slippage against.</span>
+              <div style={{ flex: 1 }} />
+              <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: ACCgrad, fontWeight: 700 }}>⚑ Set Baseline</button>
+            </>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 18 }}>
+          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad, boxShadow: `0 4px 14px ${ACC}55` }}>+ Add Task</button>
+          <button onClick={() => { setShowMs(!showMs); setShowAdd(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>◆ Add Milestone</button>
+          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: `linear-gradient(135deg,${ACCb},${ACC})`, boxShadow: `0 4px 14px ${ACC}55` }}>⬇ One-Pager (PPT)</button>
+          <button onClick={exportJSON} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↥ Export Plan</button>
+          <button onClick={() => fileRef.current && fileRef.current.click()} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↧ Import Plan</button>
+          <input ref={fileRef} type="file" accept="application/json,.json" onChange={importJSON} style={{ display: "none" }} />
+          <div style={{ flex: 1 }} />
+          <span style={{ fontSize: 12, color: "#64748b" }}>Owner:</span>
+          {owners.map((o) => (
+            <button key={o} onClick={() => setFilterOwner(o)} style={{ padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", ...selBtn(filterOwner === o) }}>{o}</button>
+          ))}
+        </div>
+
+        {showAdd && (
+          <div style={{ background: "rgba(17,24,39,0.85)", border: `1px solid ${ACCedge}`, borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3 — Reporting" /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="e.g. Dev Team" /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start</div><input type="number" min="1" max={nW} style={inputStyle} value={form.startWeek} onChange={(e) => setForm({ ...form, startWeek: e.target.value })} /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={form.pct} onChange={(e) => setForm({ ...form, pct: e.target.value })} /></div>
+            <button onClick={addTask} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#22c55e,#16a34a)" }}>Add</button>
+            <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#475569" }}>Tip: add dependencies (predecessors) afterwards via the task's ✎ edit button.</div>
+          </div>
+        )}
+
+        {showMs && (
+          <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #831843", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "2fr 0.6fr auto", gap: 10, alignItems: "end" }}>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Milestone</div><input style={inputStyle} value={msForm.name} onChange={(e) => setMsForm({ ...msForm, name: e.target.value })} placeholder="e.g. Go-Live" /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Week</div><input type="number" min="1" max={nW} style={inputStyle} value={msForm.week} onChange={(e) => setMsForm({ ...msForm, week: e.target.value })} /></div>
+            <button onClick={addMs} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#ec4899,#db2777)" }}>Add</button>
+          </div>
+        )}
+
+        <div style={{ overflowX: "auto", borderRadius: 16, border: "1px solid #1e293b", background: "rgba(13,18,32,0.8)" }}>
+          <div style={{ minWidth: boardMinWidth }}>
+            <div style={{ ...gridCols, borderBottom: "1px solid #1e293b" }}>
+              <div style={{ padding: "12px 16px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Phase / Task</div>
+              {periods.map((p) => (
+                <div key={p.start} style={{ gridColumn: `span ${p.span}`, padding: "8px 4px", textAlign: "center", borderLeft: "1px solid #16203a" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{periodTitle(p)}</div>
+                  <div style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{weekLabel(p.start)}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ ...gridCols, borderBottom: "1px solid #1e293b", background: "rgba(236,72,153,0.04)" }}>
+              <div style={{ padding: "10px 16px", fontSize: 12, fontWeight: 700, color: "#f472b6" }}>◆ Milestones</div>
+              {Array.from({ length: nW }, (_, i) => i + 1).map((w) => {
+                const ms = project.milestones.filter((m) => m.week === w);
+                return (
+                  <div key={w} style={{ borderLeft: (w - 1) % unit === 0 ? "1px solid #16203a" : "none", padding: 2, display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", minHeight: 44 }}>
+                    {ms.map((m) => (
+                      <div key={m.id} onClick={() => { if (window.confirm(`Delete milestone "${m.name}"?`)) delMs(m.id); }} title={`${m.name} (W${m.week}) — click to delete`} style={{ cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fbcfe8", background: "linear-gradient(135deg,#be185d,#ec4899)", borderRadius: 6, padding: "3px 6px", maxWidth: unit === 1 ? "100%" : 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(236,72,153,0.35)", zIndex: 2 }}>
+                        ◆ {unit === 1 ? m.name : m.name.length > 8 ? m.name.slice(0, 7) + "…" : m.name}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {PHASES.map((ph) => {
+              const tasks = visible.filter((t) => t.phase === ph.id);
+              if (!tasks.length && filterOwner !== "All") return null;
+              const pr = RAG[phaseRag(ph.id)];
+              return (
+                <div key={ph.id} style={{ borderBottom: "1px solid #16203a" }}>
+                  <div style={{ ...gridCols }}>
+                    <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: phGrad(ph), display: "inline-block", boxShadow: `0 0 8px ${ph.color}66` }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{ph.name}</span>
+                      <span style={{ fontSize: 11, color: "#475569" }}>({tasks.length})</span>
+                      <span title={`Phase health: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ width: 8, height: 8, borderRadius: 99, background: pr.c, boxShadow: `0 0 6px ${pr.c}` }} />
+                    </div>
+                    {periods.map((p) => <div key={p.start} style={{ gridColumn: `span ${p.span}`, borderLeft: "1px solid #131c33" }} />)}
+                  </div>
+                  {tasks.map((t) => {
+                    const st = STATUS_STYLE[t.status];
+                    const end = Math.min(t.startWeek + t.duration - 1, nW);
+                    const span = Math.max(1, end - t.startWeek + 1);
+                    const barPx = span * colMin;
+                    const showNum = barPx >= 40;
+                    const b = baseOf(t);
+                    const v = taskVar(t);
+                    const depNames = (t.deps || []).map((d) => { const dt = taskById(d); return dt ? dt.name : null; }).filter(Boolean);
+                    const viol = depViolation(t);
+                    return (
+                      <div key={t.id} style={{ ...gridCols, minHeight: 46 }}>
+                        <div style={{ padding: "6px 16px 6px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                            <div style={{ fontSize: 10.5, color: "#64748b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span>{t.owner}</span>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66`, whiteSpace: "nowrap" }}>{t.status === "Done" ? "✓ Done" : t.status}{t.status === "In Progress" ? ` ${t.pct}%` : ""}</span>
+                              {v !== null && v !== 0 && <span title={v > 0 ? `${v} week(s) later than baseline` : `${-v} week(s) earlier than baseline`} style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
+                              {depNames.length > 0 && <span title={"After: " + depNames.join(", ")} style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: ACCtext, background: ACCtint, border: `1px solid ${ACCedge}`, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>⟜ after {depNames.length > 1 ? `${depNames[0]} +${depNames.length - 1}` : depNames[0]}</span>}
+                              {viol && <span title="This task starts on or before a predecessor finishes" style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                            <button onClick={() => openEdit(t)} title="Edit task" style={{ border: "none", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 2 }}>✎</button>
+                            <button onClick={() => delTask(t.id)} title="Delete task" style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 2 }}>×</button>
+                          </div>
+                        </div>
+                        <div style={{ gridColumn: `2 / span ${nW}`, display: "grid", gridTemplateColumns: `repeat(${nW}, minmax(${colMin}px, 1fr))`, alignItems: "center" }}>
+                          {b && showBaseline && (() => { const bEnd = Math.min(b.startWeek + b.duration - 1, nW); const bSpan = Math.max(1, bEnd - b.startWeek + 1); return <div title={`Baseline: W${b.startWeek}–W${bEnd}`} style={{ gridColumn: `${b.startWeek} / span ${bSpan}`, alignSelf: "end", height: 3, margin: "0 3px 5px", borderRadius: 99, background: "rgba(148,163,184,0.85)", boxShadow: "0 0 0 1px rgba(15,23,42,0.45)", pointerEvents: "none" }} />; })()}
+                          <div onClick={() => cycleStatus(t.id)} title={`${t.name} — ${t.status} ${t.pct}%, W${t.startWeek}–W${end}${v !== null && v !== 0 ? ` (${v > 0 ? "+" : ""}${v}w vs baseline)` : ""} (click to advance status)`} style={{ gridColumn: `${t.startWeek} / span ${span}`, margin: "0 3px", height: 24, borderRadius: 8, cursor: "pointer", background: ph.color + "26", border: t.status === "At Risk" ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.12)", boxShadow: t.status === "At Risk" ? "0 0 12px rgba(239,68,68,0.5)" : `0 3px 10px ${ph.color}33`, overflow: "hidden", position: "relative", zIndex: 1, transition: "transform .15s ease" }} onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}>
+                            {t.pct > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${t.pct}%`, background: t.status === "Done" ? "linear-gradient(135deg,#16a34a,#22c55e)" : phGrad(ph) }} />}
+                            <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", gap: 6, padding: showNum ? "0 9px" : "0 4px", justifyContent: showNum ? "flex-start" : "center" }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 99, background: st.dot, flexShrink: 0, boxShadow: "0 0 0 1px rgba(15,23,42,0.35)" }} />
+                              {showNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#f8fafc", textShadow: "0 1px 2px rgba(0,0,0,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.status === "Done" ? "✓" : `${t.pct}%`}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Status (click bars to advance):</span>
+          {STATUSES.map((s) => (
+            <span key={s} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: STATUS_STYLE[s].text }}>
+              <span style={{ width: 8, height: 8, borderRadius: 99, background: STATUS_STYLE[s].dot }} />{s}
+            </span>
+          ))}
+          {project.baseline && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}><span style={{ width: 18, height: 3, borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />Baseline</span>}
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: ACCtext }}>⟜ depends on (see export for arrows)</span>
+          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Saved in this browser</span>
+        </div>
+
+        {showBaselineLog && (
+          <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", maxHeight: "82vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Baseline History</div>
+                <button onClick={() => setShowBaselineLog(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+              </div>
+              <div style={{ overflow: "auto", padding: "16px 24px" }}>
+                {baseLog.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>No baseline history yet.</div> : (
+                  [...baseLog].reverse().map((e, i) => {
+                    const idx = baseLog.length - i;
+                    const isCurrent = i === 0;
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: i < baseLog.length - 1 ? "1px solid #1e293b" : "none" }}>
+                        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 99, background: isCurrent ? ACCgrad : "#1e293b", color: isCurrent ? "#fff" : "#94a3b8", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#e2e8f0" }}>{fmtDate(e.at)} {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: ACCtext, marginLeft: 6 }}>CURRENT</span>}</div>
+                          <div style={{ fontSize: 12.5, color: "#cbd5e1", marginTop: 2 }}>{e.reason}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, color: "#64748b" }}>Re-baselining captures current positions and logs the reason.</span>
+                <button onClick={clearBaseline} style={{ padding: "8px 14px", borderRadius: 9, border: "1px solid #7f1d1d", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "#fca5a5", background: "transparent" }}>Remove baseline</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {editId !== null && (
+          <div onClick={() => setEditId(null)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 580, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Task</div>
+                <button onClick={() => setEditId(null)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+              </div>
+              <div style={{ padding: 20, display: "grid", gap: 12, overflow: "auto" }}>
+                <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={editForm.owner} onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={editForm.phase} onChange={(e) => setEditForm({ ...editForm, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1.2fr", gap: 12 }}>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start week</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.startWeek} onChange={(e) => setEditForm({ ...editForm, startWeek: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={editForm.pct} onChange={(e) => editSetPct(e.target.value)} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Status</div><select style={inputStyle} value={editForm.status} onChange={(e) => editSetStatus(e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Depends on (these must finish first)</div>
+                  <div style={{ maxHeight: 150, overflow: "auto", border: "1px solid #2a3650", borderRadius: 8, padding: 8, background: "#0b1220", display: "flex", flexDirection: "column", gap: 4 }}>
+                    {project.tasks.filter((t) => t.id !== editId).length === 0 ? <span style={{ fontSize: 12, color: "#64748b" }}>No other tasks yet.</span> :
+                      project.tasks.filter((t) => t.id !== editId).map((t) => {
+                        const blocked = editSucc.has(t.id);
+                        const checked = editForm.deps.includes(t.id);
+                        const dph = phOf(t.phase);
+                        return (
+                          <label key={t.id} title={blocked ? "Would create a circular dependency" : ""} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: blocked ? "#475569" : "#cbd5e1", cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.5 : 1 }}>
+                            <input type="checkbox" checked={checked} disabled={blocked} onChange={() => toggleDep(t.id)} />
+                            <span style={{ width: 8, height: 8, borderRadius: 3, background: phGrad(dph), flexShrink: 0 }} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                            <span style={{ color: "#475569", fontSize: 10 }}>· {dph.short} · W{t.startWeek}–W{Math.min(t.startWeek + t.duration - 1, nW)}</span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: "#475569" }}>% and status sync (0% = Planned, 100% = Done). Dependencies are finish-to-start; connector arrows are drawn on the exported one-pager (Task detail view).</div>
+              </div>
+              <div style={{ padding: "14px 22px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={() => setEditId(null)} style={{ padding: "9px 18px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>Cancel</button>
+                <button onClick={saveEdit} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad }}>Save changes</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showHelp && (
+          <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 680, width: "100%", maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 16, fontWeight: 900, letterSpacing: 1, color: ACC }}>SOMPO</span><span style={{ fontWeight: 800, fontSize: 16, color: "#e2e8f0" }}>Help &amp; About</span></div>
+                <button onClick={() => setShowHelp(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+              </div>
+              <div style={{ overflow: "auto", padding: "18px 24px", fontSize: 13, lineHeight: 1.6, color: "#cbd5e1" }}>
+                <p style={{ margin: "0 0 4px" }}>A reusable planner and delivery tracker for IT / SDLC projects: lay out tasks across lifecycle phases, track % complete, RAG health, baseline slippage and dependencies, mark milestones, and export a slide-ready one-pager.</p>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Managing plans</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Switch between projects with the <b>Plan</b> dropdown; <b>＋ New</b>, <b>⧉ Duplicate</b>, <b>🗑 Delete</b>. Click the title to rename.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Building &amp; tracking</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Set <b>start date</b> and <b>duration</b>; columns and axis scale adjust automatically.</li>
+                  <li><b>+ Add Task</b> (name, owner, phase, start, weeks, % done) and <b>◆ Add Milestone</b>.</li>
+                  <li>Each bar <b>fills to its % complete</b>. Click a bar to advance status, or use <b>✎</b> to edit, including %, status, and dependencies.</li>
+                  <li><b>% and status sync:</b> 0% = Planned, 1–99% = In Progress, 100% = Done; <b>At Risk</b> is a separate flag.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Dependencies</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>In a task's <b>✎ edit</b> dialog, tick the tasks it <b>depends on</b> (predecessors). Circular links are blocked.</li>
+                  <li>The board shows an <b>⟜ after …</b> chip, and an amber <b>⚠ before dep</b> warning if a task starts on or before a predecessor finishes.</li>
+                  <li>The exported <b>Task detail</b> one-pager draws connector <b>arrows</b> between linked tasks.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Health &amp; baseline</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>RAG is auto-derived per phase and overall, with a manual override. Overall progress is the average % across tasks.</li>
+                  <li><b>⚑ Set Baseline</b> captures the approved plan; tasks then show a baseline rail and variance chip. <b>⟳ Re-baseline</b> logs a reason in the <b>📋 Log</b>.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Export &amp; sharing</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li><b>⬇ One-Pager (PPT)</b> → Phase summary or Task detail → PNG / SVG for slides (SOMPO-branded).</li>
+                  <li><b>↥ Export Plan</b> / <b>↧ Import Plan</b> move plans as JSON (e.g. via Teams / SharePoint); imports arrive as new plans.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Where your data lives</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Plans are saved in <b>this browser only</b> (local storage) — not synced across browsers or PCs, nothing sent to any server.</li>
+                  <li><b>Clearing the browser's site data will erase your plans.</b> Export anything important first.</li>
+                  <li>To move to another PC: export each plan, then import the files on the other machine.</li>
+                </ul>
+              </div>
+              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <a href="https://github.com/hongyet-tay/sdlc-planner" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: ACCtext, textDecoration: "none", fontWeight: 600 }}>↗ View project &amp; docs on GitHub</a>
+                <span style={{ fontSize: 11, color: "#475569" }}>SOMPO · IT Delivery</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showExport && (
+          <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>One-Pager Timeline for PowerPoint</div>
+                <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
+                  {[["phase", "Phase summary"], ["task", "Task detail"]].map(([m, lbl]) => (
+                    <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", ...selBtn(exportMode === m) }}>{lbl}</button>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>{scaleName} axis</span>
+                <div style={{ flex: 1 }} />
+                <button onClick={downloadPNG} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad }}>⬇ PNG (for PPT)</button>
+                <button onClick={downloadSVG} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "transparent" }}>⬇ SVG</button>
+                <button onClick={() => setShowExport(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>✕</button>
+              </div>
+              <div style={{ overflow: "auto", padding: 18, background: "#1e293b" }}>
+                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
+              </div>
+              <div style={{ padding: "10px 22px", fontSize: 11.5, color: "#64748b", borderTop: "1px solid #1e293b" }}>
+                Tip: download PNG, then in PowerPoint → Insert → Pictures. Task detail view shows % fills, the baseline rail, and dependency arrows. Exported at 2× resolution, SOMPO-branded.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {toast && (
+          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: `1px solid ${ACCedge}`, color: "#e2e8f0", padding: "12px 22px", borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>{toast}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<SDLCPlanner />);
+</script>
+</body>
+</html>
