@@ -220,23 +220,6 @@ function SDLCPlanner() {
   const lastReason = baseLog.length ? baseLog[baseLog.length - 1].reason : "";
   const slipped = project.baseline ? project.tasks.filter((t) => { const v = taskVar(t); return v !== null && v > 0; }).length : 0;
 
-  const captureBaseline = (reason) => {
-    setProject((p) => {
-      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
-      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
-      const at = new Date().toISOString();
-      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
-    });
-  };
-  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
-  const reBaseline = () => {
-    const reason = window.prompt("Reason for re-baselining (e.g. approved scope change, vendor delay, resource change):", "");
-    if (reason === null) return;
-    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
-    flash("Plan re-baselined");
-  };
-  const clearBaseline = () => { if (!window.confirm("Remove the baseline and its history? This cannot be undone.")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
-
   const cycleStatus = (id) => setProject((p) => ({ ...p, tasks: p.tasks.map((t) => { if (t.id !== id) return t; const ns = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length]; return { ...t, status: ns, pct: pctFromStatus(ns, t.pct || 0) }; }) }));
   const delTask = (id) => setProject((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== id).map((t) => ({ ...t, deps: (t.deps || []).filter((d) => d !== id) })) }));
   const delMs = (id) => setProject((p) => ({ ...p, milestones: p.milestones.filter((m) => m.id !== id) }));
@@ -313,7 +296,7 @@ function SDLCPlanner() {
     const W = 1280, chartX = 320, chartR = 44;
     const chartW = W - chartX - chartR;
     const wkW = chartW / nW;
-    const headerH = 104, ragBandH = 46, axisH = 80, footerH = 58;
+    const headerH = 114, ragBandH = 46, axisH = 80, footerH = 58;
     const axisTop = headerH + ragBandH;
     let rows = [];
     if (mode === "phase") {
@@ -441,25 +424,38 @@ function SDLCPlanner() {
     const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
     const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
     
-    // Sompo clean vector logo definition for the SVG target image
-    const sompoLogoSvg = `
-      <g transform="translate(32, 28)">
-        <circle cx="16" cy="16" r="14" fill="#1e293b"/>
-        <path d="M 11 16 Q 16 9 21 16 Q 16 23 11 16 Z" fill="#ffffff"/>
-        <circle cx="16" cy="16" r="3" fill="#ef4444"/>
-        <text x="38" y="22" font-size="18" font-weight="900" fill="#0f172a" letter-spacing="0.5">SOMPO</text>
+    // Sompo One-Pager Branding: Matches "Sompo - wht.jpg" layout
+    const sompoWhiteLogoSvg = `
+      <g transform="translate(32, 24)">
+        <!-- Red sphere background layer -->
+        <circle cx="21" cy="23" r="17" fill="#d0021b"/>
+        <!-- Silver overlapping dynamic ring structure -->
+        <circle cx="29" cy="15" r="16" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" />
+        <circle cx="29" cy="15" r="13" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.6"/>
+        <!-- Primary high contrast monochrome logo text -->
+        <text x="56" y="27" font-family="'Times New Roman', Times, serif, system-ui" font-size="28" font-weight="400" fill="#000000" letter-spacing="1">SOMPO</text>
       </g>
     `;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
-<defs>${defs}<linearGradient id="g_hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1e293b"/><stop offset="0.5" stop-color="#334155"/><stop offset="1" stop-color="#475569"/></linearGradient></defs>
+<defs>
+  ${defs}
+  <linearGradient id="g_silver_onepager" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#b8b8b8"/>
+    <stop offset="0.3" stop-color="#f0f0f0"/>
+    <stop offset="0.5" stop-color="#9e9e9e"/>
+    <stop offset="0.8" stop-color="#ffffff"/>
+    <stop offset="1" stop-color="#7a7a7a"/>
+  </linearGradient>
+  <line x1="0" y1="0" x2="1" y2="0" id="g_hdr_line"><stop offset="0" stop-color="#cccccc"/><stop offset="1" stop-color="#e2e8f0"/></line>
+</defs>
 <rect width="${W}" height="${H}" fill="#ffffff"/>
-<rect x="0" y="0" width="${W}" height="6" fill="url(#g_hdr)"/>
-${sompoLogoSvg}
-<text x="32" y="78" font-size="24" font-weight="800" fill="#0f172a">${esc(project.name)}</text>
-<text x="32" y="98" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
-<text x="${W - 36}" y="48" text-anchor="end" font-size="30" font-weight="800" fill="#1e293b">${avgPct}%</text>
-<text x="${W - 36}" y="68" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
+<rect x="0" y="0" width="${W}" height="4" fill="#d0021b"/>
+${sompoWhiteLogoSvg}
+<text x="32" y="84" font-size="22" font-weight="800" fill="#1e293b">${esc(project.name)}</text>
+<text x="32" y="104" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
+<text x="${W - 36}" y="52" text-anchor="end" font-size="30" font-weight="800" fill="#000000">${avgPct}%</text>
+<text x="${W - 36}" y="72" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
 ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 <line x1="20" y1="${H - footerH}" x2="${W - 20}" y2="${H - footerH}" stroke="#e2e8f0"/>
 <text x="32" y="${H - footerH + 26}" font-size="11.5" fill="#475569">${esc(counts)}</text>
@@ -511,16 +507,32 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
     <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(51,65,85,0.25), transparent), radial-gradient(900px 500px at -10% 110%, rgba(15,23,42,0.3), transparent), #0a0e1a", color: "#e2e8f0", padding: "24px 20px 60px" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "10px 14px", marginBottom: 18 }}>
-          {/* Sompo Corporate Identity Tag inside main controls bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 12, paddingRight: 14, borderRight: "1px solid #1e293b" }}>
-            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 900, color: "#ffffff", letterSpacing: "0.5px" }}>SOMPO</span>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 18 }}>
+          
+          {/* Sompo Dark Theme Vector Branding: Matches "Sompo - blk.jpg" layout */}
+          <div style={{ display: "flex", alignItems: "center", marginRight: 16, paddingRight: 16, borderRight: "1px solid #1e293b" }}>
+            <svg width="154" height="42" viewBox="0 0 154 42" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+              <defs>
+                <linearGradient id="g_silver_dark" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#999999"/>
+                  <stop offset="0.2" stop-color="#e8e8e8"/>
+                  <stop offset="0.5" stop-color="#8a8a8a"/>
+                  <stop offset="0.8" stop-color="#ffffff"/>
+                  <stop offset="1" stop-color="#666666"/>
+                </linearGradient>
+              </defs>
+              {/* Crimson background element */}
+              <circle cx="21" cy="23" r="15" fill="#d0021b" />
+              {/* Overlaying high fidelity metallic ring */}
+              <circle cx="28" cy="16" r="14" fill="none" stroke="url(#g_silver_dark)" stroke-width="2.6" />
+              <circle cx="28" cy="16" r="11.5" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.4"/>
+              {/* Bold clean typography structure matching print variants */}
+              <text x="52" y="26" font-family="'Times New Roman', Times, serif, system-ui" font-size="25" fill="#ffffff" letter-spacing="1">SOMPO</text>
+            </svg>
           </div>
+
           <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Plan</span>
-          <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 220, maxWidth: 360, fontWeight: 700, padding: "7px 10px" }}>
+          <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 180, maxWidth: 300, fontWeight: 700, padding: "7px 10px" }}>
             {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <button onClick={newPlanLib} style={planBtn}>＋ New</button>
@@ -528,7 +540,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <button onClick={deletePlan} style={{ ...planBtn, color: "#fca5a5", border: "1px solid #7f1d1d" }}>🗑 Delete</button>
           <button onClick={() => setShowHelp(true)} style={planBtn}>ℹ Help</button>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} saved in this browser</span>
+          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} saved in local cache</span>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
@@ -889,7 +901,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 </ul>
               </div>
               <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>Sompo Enterprise Edition</span>
+                <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>Sompo Corporate Dashboard</span>
                 <span style={{ fontSize: 11, color: "#475569" }}>SDLC Project Planner</span>
               </div>
             </div>
@@ -900,7 +912,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
               <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo One-Pager Timeline for PowerPoint</div>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo Executive One-Pager Exporter</div>
                 <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
                   {[["phase", "Phase summary"], ["task", "Task detail"]].map(([m, lbl]) => (
                     <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (exportMode === m ? "#475569" : "#334155"), background: exportMode === m ? "rgba(255,255,255,0.15)" : "transparent", color: exportMode === m ? "#ffffff" : "#94a3b8" }}>{lbl}</button>
@@ -916,7 +928,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
               </div>
               <div style={{ padding: "10px 22px", fontSize: 11.5, color: "#64748b", borderTop: "1px solid #1e293b" }}>
-                Tip: download PNG, then in PowerPoint → Insert → Pictures. Task detail view shows % fills, the baseline rail, and dependency arrows. Exported at 2× resolution.
+                Tip: The exported template features clear white space background scaling rules designed for slides. Task details incorporate percentage text metrics, baseline differentials, and link path matrices.
               </div>
             </div>
           </div>
