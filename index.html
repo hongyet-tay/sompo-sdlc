@@ -219,23 +219,6 @@ function SDLCPlanner() {
   const lastReason = baseLog.length ? baseLog[baseLog.length - 1].reason : "";
   const slipped = project.baseline ? project.tasks.filter((t) => { const v = taskVar(t); return v !== null && v > 0; }).length : 0;
 
-  const captureBaseline = (reason) => {
-    setProject((p) => {
-      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
-      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
-      const at = new Date().toISOString();
-      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
-    });
-  };
-  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
-  const reBaseline = () => {
-    const reason = window.prompt("Reason for re-baselining (approved scope change, etc.):", "");
-    if (reason === null) return;
-    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
-    flash("Plan re-baselined");
-  };
-  const clearBaseline = () => { if (!window.confirm("Remove the baseline?")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
-
   const cycleStatus = (id) => setProject((p) => ({ ...p, tasks: p.tasks.map((t) => { if (t.id !== id) return t; const ns = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length]; return { ...t, status: ns, pct: pctFromStatus(ns, t.pct || 0) }; }) }));
   const delTask = (id) => setProject((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== id).map((t) => ({ ...t, deps: (t.deps || []).filter((d) => d !== id) })) }));
   const delMs = (id) => setProject((p) => ({ ...p, milestones: p.milestones.filter((m) => m.id !== id) }));
@@ -307,6 +290,23 @@ function SDLCPlanner() {
     reader.readAsText(file);
     e.target.value = "";
   };
+
+  const captureBaseline = (reason) => {
+    setProject((p) => {
+      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
+      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
+      const at = new Date().toISOString();
+      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
+    });
+  };
+  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
+  const reBaseline = () => {
+    const reason = window.prompt("Reason for re-baselining (approved scope change, etc.):", "");
+    if (reason === null) return;
+    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
+    flash("Plan re-baselined");
+  };
+  const clearBaseline = () => { if (!window.confirm("Remove the baseline?")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
 
   const buildOnePager = (mode) => {
     const W = 1280, chartX = 320, chartR = 44;
@@ -439,24 +439,29 @@ function SDLCPlanner() {
     const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
     const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
     
-    const sompoWhiteLogoSvg = `<g transform="translate(32, 24)"><circle cx="21" cy="23" r="17" fill="#d0021b"/><circle cx="29" cy="15" r="16" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" /><circle cx="29" cy="15" r="13" fill="none" stroke="#ffffff" stroke-width="0.7" opacity="0.6"/><text x="56" y="27" font-family="'Times New Roman', Times, serif, system-ui" font-size="28" font-weight="400" fill="#000000" letter-spacing="1">SOMPO</text></g>`;
+    const sompoWhiteLogoSvg = `<g transform="translate(32, 22)"><circle cx="19" cy="24" r="15" fill="url(#g_crimson_sph)"/><circle cx="28" cy="15" r="14.5" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" /><circle cx="28" cy="15" r="12" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.7"/><text x="54" y="25" font-family="'Times New Roman', Times, 'Didot', serif" font-size="28" fill="#000000" font-weight="normal" letter-spacing="0.5">SOMPO</text></g>`;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
 <defs>
   ${defs}
+  <radialGradient id="g_crimson_sph" cx="35%" cy="35%" r="65%">
+    <stop offset="0%" stop-color="#ff1a30"/>
+    <stop offset="60%" stop-color="#d0021b"/>
+    <stop offset="100%" stop-color="#80000a"/>
+  </radialGradient>
   <linearGradient id="g_silver_onepager" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#b8b8b8"/>
-    <stop offset="0.3" stop-color="#f0f0f0"/>
-    <stop offset="0.5" stop-color="#9e9e9e"/>
-    <stop offset="0.8" stop-color="#ffffff"/>
-    <stop offset="1" stop-color="#7a7a7a"/>
+    <stop offset="0" stop-color="#9e9e9e"/>
+    <stop offset="25%" stop-color="#f5f5f5"/>
+    <stop offset="50%" stop-color="#aaaaaa"/>
+    <stop offset="75%" stop-color="#ffffff"/>
+    <stop offset="100%" stop-color="#737373"/>
   </linearGradient>
 </defs>
 <rect width="${W}" height="${H}" fill="#ffffff"/>
 <rect x="0" y="0" width="${W}" height="4" fill="#d0021b"/>
 ${sompoWhiteLogoSvg}
-<text x="32" y="84" font-size="22" font-weight="800" fill="#1e293b">${esc(project.name)}</text>
-<text x="32" y="104" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
+<text x="32" y="86" font-size="22" font-weight="800" fill="#1e293b">${esc(project.name)}</text>
+<text x="32" y="106" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
 <text x="${W - 36}" y="52" text-anchor="end" font-size="30" font-weight="800" fill="#000000">${avgPct}%</text>
 <text x="${W - 36}" y="72" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
 ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
@@ -515,18 +520,23 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <div style={{ display: "flex", alignItems: "center", marginRight: 16, paddingRight: 16, borderRight: "1px solid #1e293b" }}>
             <svg width="154" height="42" viewBox="0 0 154 42" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
               <defs>
+                <radialGradient id="g_crimson_sph_dark" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stop-color="#ff1a30"/>
+                  <stop offset="60%" stop-color="#d0021b"/>
+                  <stop offset="100%" stop-color="#80000a"/>
+                </radialGradient>
                 <linearGradient id="g_silver_dark" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0" stop-color="#999999"/>
-                  <stop offset="0.2" stop-color="#e8e8e8"/>
-                  <stop offset="0.5" stop-color="#8a8a8a"/>
-                  <stop offset="0.8" stop-color="#ffffff"/>
-                  <stop offset="1" stop-color="#666666"/>
+                  <stop offset="25%" stop-color="#e8e8e8"/>
+                  <stop offset="50%" stop-color="#8a8a8a"/>
+                  <stop offset="75%" stop-color="#ffffff"/>
+                  <stop offset="100%" stop-color="#666666"/>
                 </linearGradient>
               </defs>
-              <circle cx="21" cy="23" r="15" fill="#d0021b" />
+              <circle cx="21" cy="23" r="15" fill="url(#g_crimson_sph_dark)" />
               <circle cx="28" cy="16" r="14" fill="none" stroke="url(#g_silver_dark)" stroke-width="2.6" />
               <circle cx="28" cy="16" r="11.5" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.4"/>
-              <text x="52" y="26" font-family="'Times New Roman', Times, serif, system-ui" font-size="25" fill="#ffffff" letter-spacing="1">SOMPO</text>
+              <text x="52" y="25" font-family="'Times New Roman', Times, 'Didot', serif" font-size="25" fill="#ffffff" font-weight="normal" letter-spacing="0.5">SOMPO</text>
             </svg>
           </div>
 
@@ -660,7 +670,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         {showMs && (
           <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #831843", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "2fr 0.6fr auto", gap: 10, alignItems: "end" }}>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Milestone</div><input style={inputStyle} value={msForm.name} onChange={(e) => setMsForm({ ...msForm, name: e.target.value })} placeholder="e.g. Go-Live" /></div>
-            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Week</div><input type="number" min="1" max={nW} style={inputStyle} value={msForm.week} onChange={(e) => setMsForm({ ...msForm, week: e.target.value })} /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Week</div><input type="number" min="1" max={nW} style={inputStyle} value={msForm.week} onChange={(e) => setMsForm({ ...msForm, week: e.target.value })} placeholder="4" /></div>
             <button onClick={addMs} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#ec4899,#db2777)" }}>Add</button>
           </div>
         )}
@@ -753,6 +763,17 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           </div>
         </div>
 
+        <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Status (click bars to advance):</span>
+          {STATUSES.map((s) => (
+            <span key={s} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: STATUS_STYLE[s].text }}>
+              <span style={{ width: 8, height: 8, borderRadius: 99, background: STATUS_STYLE[s].dot }} />{s}
+            </span>
+          ))}
+          {project.baseline && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}><span style={{ width: 18, height: 3, borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />Baseline</span>}
+          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Sompo Local Storage Sync</span>
+        </div>
+
         {showBaselineLog && (
           <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", padding: 24 }}>
@@ -818,7 +839,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo One-Pager Exporter</div>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo Executive One-Pager Exporter</div>
                 <button onClick={() => setExportMode(exportMode === "phase" ? "task" : "phase")} style={planBtn}>Toggle View ({exportMode})</button>
                 <div style={{ flex: 1 }} />
                 <button onClick={downloadPNG} style={{ ...planBtn, background: "#334155" }}>⬇ PNG</button>
