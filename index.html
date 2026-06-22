@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sompo SDLC Project Planner</title>
+<title>SDLC Project Planner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -21,6 +21,10 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
+
+const SOMPO_BLACK_LOGO = "data:image/jpeg;base64,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";
+const SOMPO_WHITE_LOGO = "data:image/jpeg;base64,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";
+
 
 const PHASES = [
   { id: "initiation", name: "Initiation", short: "Init", color: "#818cf8", c1: "#6366f1", c2: "#818cf8" },
@@ -187,6 +191,7 @@ function SDLCPlanner() {
   const atRisk = project.tasks.filter((t) => t.status === "At Risk").length;
   const avgPct = project.tasks.length ? Math.round(project.tasks.reduce((s, t) => s + (t.pct || 0), 0) / project.tasks.length) : 0;
 
+  // dependency helpers
   const successorsClosure = (startId) => {
     const res = new Set();
     const visit = (id) => { project.tasks.forEach((t) => { if ((t.deps || []).includes(id) && !res.has(t.id)) { res.add(t.id); visit(t.id); } }); };
@@ -218,6 +223,23 @@ function SDLCPlanner() {
   const baseLog = project.baselineLog || [];
   const lastReason = baseLog.length ? baseLog[baseLog.length - 1].reason : "";
   const slipped = project.baseline ? project.tasks.filter((t) => { const v = taskVar(t); return v !== null && v > 0; }).length : 0;
+
+  const captureBaseline = (reason) => {
+    setProject((p) => {
+      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
+      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
+      const at = new Date().toISOString();
+      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
+    });
+  };
+  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
+  const reBaseline = () => {
+    const reason = window.prompt("Reason for re-baselining (e.g. approved scope change, vendor delay, resource change):", "");
+    if (reason === null) return;
+    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
+    flash("Plan re-baselined");
+  };
+  const clearBaseline = () => { if (!window.confirm("Remove the baseline and its history? This cannot be undone.")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
 
   const cycleStatus = (id) => setProject((p) => ({ ...p, tasks: p.tasks.map((t) => { if (t.id !== id) return t; const ns = STATUSES[(STATUSES.indexOf(t.status) + 1) % STATUSES.length]; return { ...t, status: ns, pct: pctFromStatus(ns, t.pct || 0) }; }) }));
   const delTask = (id) => setProject((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== id).map((t) => ({ ...t, deps: (t.deps || []).filter((d) => d !== id) })) }));
@@ -258,7 +280,7 @@ function SDLCPlanner() {
   const newPlanLib = () => { const np = blankPlan(); setPlans((prev) => [...prev, np]); setCurrentId(np.id); setWeeksInput(String(np.weeks)); setFilterOwner("All"); flash("New plan created"); };
   const duplicatePlan = () => { const copy = JSON.parse(JSON.stringify(project)); copy.id = genId(); copy.name = project.name + " (copy)"; setPlans((prev) => [...prev, copy]); setCurrentId(copy.id); setWeeksInput(String(copy.weeks)); setFilterOwner("All"); flash("Plan duplicated"); };
   const deletePlan = () => {
-    if (!window.confirm(`Delete plan "${project.name}"?`)) return;
+    if (!window.confirm(`Delete plan "${project.name}"? This cannot be undone.`)) return;
     const remaining = plans.filter((p) => p.id !== currentId);
     if (!remaining.length) { const fresh = blankPlan(); setPlans([fresh]); setCurrentId(fresh.id); setWeeksInput(String(fresh.weeks)); }
     else { setPlans(remaining); setCurrentId(remaining[0].id); setWeeksInput(String(remaining[0].weeks)); }
@@ -268,7 +290,7 @@ function SDLCPlanner() {
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
-    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_plan.json";
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_plan.json";
     a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     flash("Plan exported as JSON");
@@ -284,35 +306,18 @@ function SDLCPlanner() {
         p = normPlan(p); p.id = genId();
         if (!p.name) p.name = "Imported plan";
         setPlans((prev) => [...prev, p]); setCurrentId(p.id); setWeeksInput(String(p.weeks)); setFilterOwner("All");
-        flash("Plan imported successfully");
-      } catch (err) { flash("Import failed — invalid format"); }
+        flash("Plan imported as new plan");
+      } catch (err) { flash("Import failed — not a valid plan file"); }
     };
     reader.readAsText(file);
     e.target.value = "";
   };
 
-  const captureBaseline = (reason) => {
-    setProject((p) => {
-      const tasks = {}; p.tasks.forEach((t) => { tasks[t.id] = { startWeek: t.startWeek, duration: t.duration }; });
-      const milestones = {}; p.milestones.forEach((m) => { milestones[m.id] = { week: m.week }; });
-      const at = new Date().toISOString();
-      return { ...p, baseline: { capturedAt: at, tasks, milestones, weeks: p.weeks }, baselineLog: [...(p.baselineLog || []), { at, reason }] };
-    });
-  };
-  const setBaseline = () => { captureBaseline("Initial baseline"); flash("Baseline captured"); };
-  const reBaseline = () => {
-    const reason = window.prompt("Reason for re-baselining (approved scope change, etc.):", "");
-    if (reason === null) return;
-    captureBaseline(reason.trim() || "Re-baselined (no reason given)");
-    flash("Plan re-baselined");
-  };
-  const clearBaseline = () => { if (!window.confirm("Remove the baseline?")) return; setProject((p) => ({ ...p, baseline: null, baselineLog: [] })); setShowBaselineLog(false); flash("Baseline removed"); };
-
   const buildOnePager = (mode) => {
     const W = 1280, chartX = 320, chartR = 44;
     const chartW = W - chartX - chartR;
     const wkW = chartW / nW;
-    const headerH = 114, ragBandH = 46, axisH = 80, footerH = 58;
+    const headerH = 104, ragBandH = 46, axisH = 80, footerH = 58;
     const axisTop = headerH + ragBandH;
     let rows = [];
     if (mode === "phase") {
@@ -413,6 +418,7 @@ function SDLCPlanner() {
       if (r.risk) rowSvg += `<text x="${chartX + chartW + 6}" y="${labelY + 4}" font-size="14" fill="#ef4444">⚠</text>`;
     });
 
+    // dependency arrows (task view)
     let depCount = 0;
     if (mode === "task") {
       const idx = {}; rows.forEach((r, i) => { if (r.id != null) idx[r.id] = i; });
@@ -438,36 +444,22 @@ function SDLCPlanner() {
     const range = project.startDate ? `${weekLabel(1)} – ${weekLabel(nW)} ${weekDate(nW) ? weekDate(nW).getFullYear() : ""}` : `${nW} weeks`;
     const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
     const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
-    
-    const sompoWhiteLogoSvg = `<g transform="translate(32, 22)"><circle cx="19" cy="24" r="15" fill="url(#g_crimson_sph)"/><circle cx="28" cy="15" r="14.5" fill="none" stroke="url(#g_silver_onepager)" stroke-width="3" /><circle cx="28" cy="15" r="12" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.7"/><text x="54" y="25" font-family="'Times New Roman', Times, 'Didot', serif" font-size="28" fill="#000000" font-weight="normal" letter-spacing="0.5">SOMPO</text></g>`;
-
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
-<defs>
-  ${defs}
-  <radialGradient id="g_crimson_sph" cx="35%" cy="35%" r="65%">
-    <stop offset="0%" stop-color="#ff1a30"/>
-    <stop offset="60%" stop-color="#d0021b"/>
-    <stop offset="100%" stop-color="#80000a"/>
-  </radialGradient>
-  <linearGradient id="g_silver_onepager" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#9e9e9e"/>
-    <stop offset="25%" stop-color="#f5f5f5"/>
-    <stop offset="50%" stop-color="#aaaaaa"/>
-    <stop offset="75%" stop-color="#ffffff"/>
-    <stop offset="100%" stop-color="#737373"/>
-  </linearGradient>
-</defs>
+
+<rect x="${W-260}" y="8" width="240" height="56" rx="6" fill="#e60028"/>
+<image href="${SOMPO_WHITE_LOGO}" x="${W-235}" y="14" width="180" height="44"/>
+
+<defs>${defs}<linearGradient id="g_hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6366f1"/><stop offset="0.5" stop-color="#a78bfa"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
 <rect width="${W}" height="${H}" fill="#ffffff"/>
-<rect x="0" y="0" width="${W}" height="4" fill="#d0021b"/>
-${sompoWhiteLogoSvg}
-<text x="32" y="86" font-size="22" font-weight="800" fill="#1e293b">${esc(project.name)}</text>
-<text x="32" y="106" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
-<text x="${W - 36}" y="52" text-anchor="end" font-size="30" font-weight="800" fill="#000000">${avgPct}%</text>
-<text x="${W - 36}" y="72" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
+<rect x="0" y="0" width="${W}" height="6" fill="url(#g_hdr)"/>
+<text x="32" y="48" font-size="27" font-weight="800" fill="#0f172a">${esc(project.name)}</text>
+<text x="32" y="74" font-size="13" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
+<text x="${W - 36}" y="46" text-anchor="end" font-size="30" font-weight="800" fill="#6366f1">${avgPct}%</text>
+<text x="${W - 36}" y="66" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
 ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 <line x1="20" y1="${H - footerH}" x2="${W - 20}" y2="${H - footerH}" stroke="#e2e8f0"/>
 <text x="32" y="${H - footerH + 26}" font-size="11.5" fill="#475569">${esc(counts)}</text>
-<text x="${W - 36}" y="${H - footerH + 26}" text-anchor="end" font-size="10.5" fill="#94a3b8">SOMPO Delivery Analytics · Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</text>
+<text x="${W - 36}" y="${H - footerH + 26}" text-anchor="end" font-size="10.5" fill="#94a3b8">Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</text>
 </svg>`;
   };
 
@@ -485,7 +477,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
         ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
         const a = document.createElement("a");
-        a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_timeline.png";
+        a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.png";
         a.href = c.toDataURL("image/png"); a.click();
       } catch (e) { console.error("PNG export failed", e); }
       URL.revokeObjectURL(url);
@@ -497,7 +489,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
     const svg = buildOnePager(exportMode);
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const a = document.createElement("a");
-    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_timeline.svg";
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.svg";
     a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
@@ -512,36 +504,12 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
   const editSucc = editId !== null ? successorsClosure(editId) : new Set();
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(51,65,85,0.25), transparent), radial-gradient(900px 500px at -10% 110%, rgba(15,23,42,0.3), transparent), #0a0e1a", color: "#e2e8f0", padding: "24px 20px 60px" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(99,102,241,0.15), transparent), radial-gradient(900px 500px at -10% 110%, rgba(236,72,153,0.1), transparent), #0a0e1a", color: "#e2e8f0", padding: "24px 20px 60px" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 18 }}>
-          
-          <div style={{ display: "flex", alignItems: "center", marginRight: 16, paddingRight: 16, borderRight: "1px solid #1e293b" }}>
-            <svg width="154" height="42" viewBox="0 0 154 42" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-              <defs>
-                <radialGradient id="g_crimson_sph_dark" cx="35%" cy="35%" r="65%">
-                  <stop offset="0%" stop-color="#ff1a30"/>
-                  <stop offset="60%" stop-color="#d0021b"/>
-                  <stop offset="100%" stop-color="#80000a"/>
-                </radialGradient>
-                <linearGradient id="g_silver_dark" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#999999"/>
-                  <stop offset="25%" stop-color="#e8e8e8"/>
-                  <stop offset="50%" stop-color="#8a8a8a"/>
-                  <stop offset="75%" stop-color="#ffffff"/>
-                  <stop offset="100%" stop-color="#666666"/>
-                </linearGradient>
-              </defs>
-              <circle cx="21" cy="23" r="15" fill="url(#g_crimson_sph_dark)" />
-              <circle cx="28" cy="16" r="14" fill="none" stroke="url(#g_silver_dark)" stroke-width="2.6" />
-              <circle cx="28" cy="16" r="11.5" fill="none" stroke="#ffffff" stroke-width="0.5" opacity="0.4"/>
-              <text x="52" y="25" font-family="'Times New Roman', Times, 'Didot', serif" font-size="25" fill="#ffffff" font-weight="normal" letter-spacing="0.5">SOMPO</text>
-            </svg>
-          </div>
-
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Plan</span>
-          <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 180, maxWidth: 300, fontWeight: 700, padding: "7px 10px" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "10px 14px", marginBottom: 18 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1 }}>Plan</span>
+          <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 220, maxWidth: 360, fontWeight: 700, padding: "7px 10px" }}>
             {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <button onClick={newPlanLib} style={planBtn}>＋ New</button>
@@ -549,16 +517,16 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <button onClick={deletePlan} style={{ ...planBtn, color: "#fca5a5", border: "1px solid #7f1d1d" }}>🗑 Delete</button>
           <button onClick={() => setShowHelp(true)} style={planBtn}>ℹ Help</button>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} in cache</span>
+          <span style={{ fontSize: 11, color: "#64748b" }}>{plans.length} plan{plans.length !== 1 ? "s" : ""} saved in this browser</span>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#94a3b8", fontWeight: 700, marginBottom: 6 }}>SDLC Project Planner</div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}><img src={SOMPO_BLACK_LOGO} style={{height:38}}/><div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#ffffff", fontWeight: 700 }}>SOMPO SDLC Project Planner</div></div>
             {editingName ? (
               <input autoFocus value={project.name} onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))} onBlur={() => setEditingName(false)} onKeyDown={(e) => e.key === "Enter" && setEditingName(false)} style={{ ...inputStyle, fontSize: 26, fontWeight: 800, width: 420, maxWidth: "80vw" }} />
             ) : (
-              <h1 onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 30, fontWeight: 800, margin: 0, cursor: "pointer", background: "linear-gradient(90deg,#f1f5f9,#cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <h1 onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 30, fontWeight: 800, margin: 0, cursor: "pointer", background: "linear-gradient(90deg,#f1f5f9,#a5b4fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 {project.name} <span style={{ fontSize: 14, WebkitTextFillColor: "#475569" }}>✎</span>
               </h1>
             )}
@@ -568,16 +536,16 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               <label style={{ fontSize: 12, color: "#94a3b8" }}>Duration (weeks):</label>
               <input type="number" min="1" max={MAX_WEEKS} value={weeksInput} onChange={(e) => setWeeksInput(e.target.value)} onBlur={(e) => applyWeeks(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyWeeks(e.target.value)} style={{ ...inputStyle, width: 76, padding: "5px 8px", textAlign: "center", fontWeight: 700 }} />
               {[12, 16, 24, 36, 52].map((n) => (
-                <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (project.weeks === n ? "#475569" : "#2a3650"), background: project.weeks === n ? "rgba(255,255,255,0.1)" : "transparent", color: project.weeks === n ? "#ffffff" : "#94a3b8" }}>{n}w</button>
+                <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (project.weeks === n ? "#6366f1" : "#2a3650"), background: project.weeks === n ? "rgba(99,102,241,0.25)" : "transparent", color: project.weeks === n ? "#c7d2fe" : "#94a3b8" }}>{n}w</button>
               ))}
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName} (auto)</span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {[
-              { label: "Avg Progress", value: avgPct + "%", sub: `${done}/${project.tasks.length} done`, grad: "linear-gradient(135deg,#e2e8f0,#94a3b8)" },
+              { label: "Avg Progress", value: avgPct + "%", sub: `${done}/${project.tasks.length} done`, grad: "linear-gradient(135deg,#6366f1,#a78bfa)" },
               { label: "At Risk", value: atRisk, sub: atRisk ? "needs attention" : "all clear", grad: atRisk ? "linear-gradient(135deg,#ef4444,#f97316)" : "linear-gradient(135deg,#22c55e,#4ade80)" },
-              { label: "Milestones", value: project.milestones.length, sub: "tracked", grad: "linear-gradient(135deg,#94a3b8,#475569)" },
+              { label: "Milestones", value: project.milestones.length, sub: "tracked", grad: "linear-gradient(135deg,#ec4899,#f472b6)" },
             ].map((k) => (
               <div key={k.label} style={{ background: "rgba(17,24,39,0.7)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 18px", minWidth: 110 }}>
                 <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{k.label}</div>
@@ -589,19 +557,21 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         </div>
 
         <div style={{ height: 8, background: "#1e293b", borderRadius: 99, overflow: "hidden", marginBottom: 18 }}>
-          <div style={{ height: "100%", width: avgPct + "%", background: "linear-gradient(90deg,#475569,#94a3b8,#e2e8f0)", borderRadius: 99, transition: "width .6s ease" }} />
+          <div style={{ height: "100%", width: avgPct + "%", background: "linear-gradient(90deg,#6366f1,#a78bfa,#f472b6)", borderRadius: 99, transition: "width .6s ease" }} />
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Project Health</span>
-            <span style={{ padding: "5px 16px", borderRadius: 99, fontWeight: 800, fontSize: 13, color: "#fff", background: RAG[overallRag].c }}>{RAG[overallRag].label}</span>
+            <span style={{ padding: "5px 16px", borderRadius: 99, fontWeight: 800, fontSize: 13, color: "#fff", background: RAG[overallRag].c, boxShadow: `0 2px 10px ${RAG[overallRag].c}66` }}>{RAG[overallRag].label}</span>
+            {project.ragOverride && <span style={{ fontSize: 10, color: "#94a3b8", fontStyle: "italic" }}>manual</span>}
           </div>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <span style={{ fontSize: 10, color: "#64748b", marginRight: 2 }}>Set:</span>
             {ovBtns.map((b) => {
               const active = (project.ragOverride || null) === b.v;
               return (
-                <button key={b.l} onClick={() => setOverride(b.v)} style={{ minWidth: b.v ? 30 : 48, padding: "5px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? b.c : "#2a3650"), background: active ? b.c + "33" : "transparent", color: active ? "#e2e8f0" : "#94a3b8" }}>
+                <button key={b.l} onClick={() => setOverride(b.v)} title={b.v ? `Force ${b.v}` : "Auto-derive from task status"} style={{ minWidth: b.v ? 30 : 48, padding: "5px 8px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? b.c : "#2a3650"), background: active ? b.c + "33" : "transparent", color: active ? "#e2e8f0" : "#94a3b8" }}>
                   {b.v ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: b.c, marginRight: 4, verticalAlign: "middle" }} /> : null}{b.l}
                 </button>
               );
@@ -612,7 +582,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             {PHASES.map((ph) => {
               const r = RAG[phaseRag(ph.id)];
               return (
-                <span key={ph.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 7, fontSize: 11, fontWeight: 700, color: "#e2e8f0", background: r.bg, border: `1px solid ${r.c}` }}>
+                <span key={ph.id} title={`${ph.name}: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 7, fontSize: 11, fontWeight: 700, color: "#e2e8f0", background: r.bg, border: `1px solid ${r.c}` }}>
                   <span style={{ width: 7, height: 7, borderRadius: 99, background: r.c }} />{ph.short}
                 </span>
               );
@@ -634,43 +604,44 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             </>
           ) : (
             <>
-              <span style={{ fontSize: 12.5, color: "#94a3b8" }}>No active baseline recorded.</span>
+              <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Not set — capture the current plan as the approved baseline to track slippage against.</span>
               <div style={{ flex: 1 }} />
-              <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: "linear-gradient(135deg,#475569,#334155)", fontWeight: 700 }}>⚑ Set Baseline</button>
+              <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", fontWeight: 700 }}>⚑ Set Baseline</button>
             </>
           )}
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 18 }}>
-          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#334155,#1e293b)" }}>+ Add Task</button>
+          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", boxShadow: "0 4px 14px rgba(99,102,241,0.4)" }}>+ Add Task</button>
           <button onClick={() => { setShowMs(!showMs); setShowAdd(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>◆ Add Milestone</button>
-          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#1e293b)" }}>⬇ One-Pager (PPT)</button>
+          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#ec4899,#f43f5e)", boxShadow: "0 4px 14px rgba(236,72,153,0.4)" }}>⬇ One-Pager (PPT)</button>
           <button onClick={exportJSON} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↥ Export Plan</button>
           <button onClick={() => fileRef.current && fileRef.current.click()} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↧ Import Plan</button>
           <input ref={fileRef} type="file" accept="application/json,.json" onChange={importJSON} style={{ display: "none" }} />
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: "#64748b" }}>Owner:</span>
           {owners.map((o) => (
-            <button key={o} onClick={() => setFilterOwner(o)} style={{ padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (filterOwner === o ? "#94a3b8" : "#2a3650"), background: filterOwner === o ? "rgba(255,255,255,0.15)" : "transparent", color: filterOwner === o ? "#ffffff" : "#94a3b8" }}>{o}</button>
+            <button key={o} onClick={() => setFilterOwner(o)} style={{ padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (filterOwner === o ? "#6366f1" : "#2a3650"), background: filterOwner === o ? "rgba(99,102,241,0.25)" : "transparent", color: filterOwner === o ? "#c7d2fe" : "#94a3b8" }}>{o}</button>
           ))}
         </div>
 
         {showAdd && (
-          <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #334155", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
-            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3" /></div>
+          <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #312e81", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3 — Reporting" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="e.g. Dev Team" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start</div><input type="number" min="1" max={nW} style={inputStyle} value={form.startWeek} onChange={(e) => setForm({ ...form, startWeek: e.target.value })} /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={form.pct} onChange={(e) => setForm({ ...form, pct: e.target.value })} /></div>
             <button onClick={addTask} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#22c55e,#16a34a)" }}>Add</button>
+            <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "#475569" }}>Tip: add dependencies (predecessors) afterwards via the task's ✎ edit button.</div>
           </div>
         )}
 
         {showMs && (
           <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #831843", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "2fr 0.6fr auto", gap: 10, alignItems: "end" }}>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Milestone</div><input style={inputStyle} value={msForm.name} onChange={(e) => setMsForm({ ...msForm, name: e.target.value })} placeholder="e.g. Go-Live" /></div>
-            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Week</div><input type="number" min="1" max={nW} style={inputStyle} value={msForm.week} onChange={(e) => setMsForm({ ...msForm, week: e.target.value })} placeholder="4" /></div>
+            <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Week</div><input type="number" min="1" max={nW} style={inputStyle} value={msForm.week} onChange={(e) => setMsForm({ ...msForm, week: e.target.value })} /></div>
             <button onClick={addMs} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#ec4899,#db2777)" }}>Add</button>
           </div>
         )}
@@ -681,8 +652,8 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               <div style={{ padding: "12px 16px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>Phase / Task</div>
               {periods.map((p) => (
                 <div key={p.start} style={{ gridColumn: `span ${p.span}`, padding: "8px 4px", textAlign: "center", borderLeft: "1px solid #16203a" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1" }}>{periodTitle(p)}</div>
-                  <div style={{ fontSize: 10, color: "#475569" }}>{weekLabel(p.start)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{periodTitle(p)}</div>
+                  <div style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{weekLabel(p.start)}</div>
                 </div>
               ))}
             </div>
@@ -694,7 +665,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 return (
                   <div key={w} style={{ borderLeft: (w - 1) % unit === 0 ? "1px solid #16203a" : "none", padding: 2, display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", minHeight: 44 }}>
                     {ms.map((m) => (
-                      <div key={m.id} onClick={() => { if (window.confirm(`Delete milestone "${m.name}"?`)) delMs(m.id); }} style={{ cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fbcfe8", background: "linear-gradient(135deg,#be185d,#ec4899)", borderRadius: 6, padding: "3px 6px", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div key={m.id} onClick={() => { if (window.confirm(`Delete milestone "${m.name}"?`)) delMs(m.id); }} title={`${m.name} (W${m.week}) — click to delete`} style={{ cursor: "pointer", fontSize: 10, fontWeight: 700, color: "#fbcfe8", background: "linear-gradient(135deg,#be185d,#ec4899)", borderRadius: 6, padding: "3px 6px", maxWidth: unit === 1 ? "100%" : 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(236,72,153,0.35)", zIndex: 2 }}>
                         ◆ {unit === 1 ? m.name : m.name.length > 8 ? m.name.slice(0, 7) + "…" : m.name}
                       </div>
                     ))}
@@ -711,9 +682,10 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 <div key={ph.id} style={{ borderBottom: "1px solid #16203a" }}>
                   <div style={{ ...gridCols }}>
                     <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, background: phGrad(ph), display: "inline-block" }} />
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: phGrad(ph), display: "inline-block", boxShadow: `0 0 8px ${ph.color}66` }} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{ph.name}</span>
-                      <span style={{ width: 8, height: 8, borderRadius: 99, background: pr.c }} />
+                      <span style={{ fontSize: 11, color: "#475569" }}>({tasks.length})</span>
+                      <span title={`Phase health: ${phaseRag(ph.id) === "NA" ? "no tasks" : phaseRag(ph.id)}`} style={{ width: 8, height: 8, borderRadius: 99, background: pr.c, boxShadow: `0 0 6px ${pr.c}` }} />
                     </div>
                     {periods.map((p) => <div key={p.start} style={{ gridColumn: `span ${p.span}`, borderLeft: "1px solid #131c33" }} />)}
                   </div>
@@ -734,23 +706,24 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                             <div style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
                             <div style={{ fontSize: 10.5, color: "#64748b", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span>{t.owner}</span>
-                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66` }}>{t.status === "Done" ? "✓ Done" : t.status}</span>
-                              {v !== null && v !== 0 && <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
-                              {viol && <span style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66`, whiteSpace: "nowrap" }}>{t.status === "Done" ? "✓ Done" : t.status}{t.status === "In Progress" ? ` ${t.pct}%` : ""}</span>
+                              {v !== null && v !== 0 && <span title={v > 0 ? `${v} week(s) later than baseline` : `${-v} week(s) earlier than baseline`} style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
+                              {depNames.length > 0 && <span title={"After: " + depNames.join(", ")} style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#c7d2fe", background: "rgba(99,102,241,0.15)", border: "1px solid #3730a3", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>⟜ after {depNames.length > 1 ? `${depNames[0]} +${depNames.length - 1}` : depNames[0]}</span>}
+                              {viol && <span title="This task starts on or before a predecessor finishes" style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                            <button onClick={() => openEdit(t)} style={{ border: "none", background: "transparent", color: "#64748b", cursor: "pointer" }}>✎</button>
-                            <button onClick={() => delTask(t.id)} style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer" }}>×</button>
+                            <button onClick={() => openEdit(t)} title="Edit task" style={{ border: "none", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 2 }}>✎</button>
+                            <button onClick={() => delTask(t.id)} title="Delete task" style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 2 }}>×</button>
                           </div>
                         </div>
                         <div style={{ gridColumn: `2 / span ${nW}`, display: "grid", gridTemplateColumns: `repeat(${nW}, minmax(${colMin}px, 1fr))`, alignItems: "center" }}>
-                          {b && showBaseline && (() => { const bEnd = Math.min(b.startWeek + b.duration - 1, nW); const bSpan = Math.max(1, bEnd - b.startWeek + 1); return <div style={{ gridColumn: `${b.startWeek} / span ${bSpan}`, alignSelf: "end", height: 3, margin: "0 3px 5px", borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />; })()}
-                          <div onClick={() => cycleStatus(t.id)} style={{ gridColumn: `${t.startWeek} / span ${span}`, margin: "0 3px", height: 24, borderRadius: 8, cursor: "pointer", background: ph.color + "26", border: t.status === "At Risk" ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.12)", position: "relative", overflow: "hidden" }}>
+                          {b && showBaseline && (() => { const bEnd = Math.min(b.startWeek + b.duration - 1, nW); const bSpan = Math.max(1, bEnd - b.startWeek + 1); return <div title={`Baseline: W${b.startWeek}–W${bEnd}`} style={{ gridColumn: `${b.startWeek} / span ${bSpan}`, alignSelf: "end", height: 3, margin: "0 3px 5px", borderRadius: 99, background: "rgba(148,163,184,0.85)", boxShadow: "0 0 0 1px rgba(15,23,42,0.45)", pointerEvents: "none" }} />; })()}
+                          <div onClick={() => cycleStatus(t.id)} title={`${t.name} — ${t.status} ${t.pct}%, W${t.startWeek}–W${end}${v !== null && v !== 0 ? ` (${v > 0 ? "+" : ""}${v}w vs baseline)` : ""} (click to advance status)`} style={{ gridColumn: `${t.startWeek} / span ${span}`, margin: "0 3px", height: 24, borderRadius: 8, cursor: "pointer", background: ph.color + "26", border: t.status === "At Risk" ? "2px solid #ef4444" : "1px solid rgba(255,255,255,0.12)", boxShadow: t.status === "At Risk" ? "0 0 12px rgba(239,68,68,0.5)" : `0 3px 10px ${ph.color}33`, overflow: "hidden", position: "relative", zIndex: 1, transition: "transform .15s ease" }} onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}>
                             {t.pct > 0 && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${t.pct}%`, background: t.status === "Done" ? "linear-gradient(135deg,#16a34a,#22c55e)" : phGrad(ph) }} />}
-                            <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", gap: 6, padding: "0 9px" }}>
-                              <span style={{ width: 7, height: 7, borderRadius: 99, background: st.dot }} />
-                              {showNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#f8fafc" }}>{t.status === "Done" ? "✓" : `${t.pct}%`}</span>}
+                            <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", alignItems: "center", gap: 6, padding: showNum ? "0 9px" : "0 4px", justifyContent: showNum ? "flex-start" : "center" }}>
+                              <span style={{ width: 7, height: 7, borderRadius: 99, background: st.dot, flexShrink: 0, boxShadow: "0 0 0 1px rgba(15,23,42,0.35)" }} />
+                              {showNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: "#f8fafc", textShadow: "0 1px 2px rgba(0,0,0,0.5)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.status === "Done" ? "✓" : `${t.pct}%`}</span>}
                             </div>
                           </div>
                         </div>
@@ -771,89 +744,176 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             </span>
           ))}
           {project.baseline && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}><span style={{ width: 18, height: 3, borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />Baseline</span>}
-          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Sompo Local Storage Sync</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#c7d2fe" }}>⟜ depends on (see export for arrows)</span>
+          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Saved in this browser</span>
         </div>
 
         {showBaselineLog && (
-          <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", padding: 24 }}>
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 12 }}>Baseline History</div>
-              <div style={{ overflow: "auto", maxHeight: 300 }}>
-                {baseLog.length === 0 ? <p>No records.</p> : baseLog.map((e, i) => (
-                  <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid #1e293b" }}>
-                    <b>{fmtDate(e.at)}</b> — {e.reason}
-                  </div>
-                ))}
+          <div onClick={() => setShowBaselineLog(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 57, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", maxHeight: "82vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Baseline History</div>
+                <button onClick={() => setShowBaselineLog(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
               </div>
-              <button onClick={clearBaseline} style={{ marginTop: 12, padding: "6px 12px", borderRadius: 8, color: "#fca5a5", background: "transparent", border: "1px solid #7f1d1d" }}>Clear Baseline</button>
+              <div style={{ overflow: "auto", padding: "16px 24px" }}>
+                {baseLog.length === 0 ? <div style={{ color: "#64748b", fontSize: 13 }}>No baseline history yet.</div> : (
+                  [...baseLog].reverse().map((e, i) => {
+                    const idx = baseLog.length - i;
+                    const isCurrent = i === 0;
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: i < baseLog.length - 1 ? "1px solid #1e293b" : "none" }}>
+                        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 99, background: isCurrent ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "#1e293b", color: isCurrent ? "#fff" : "#94a3b8", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#e2e8f0" }}>{fmtDate(e.at)} {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", marginLeft: 6 }}>CURRENT</span>}</div>
+                          <div style={{ fontSize: 12.5, color: "#cbd5e1", marginTop: 2 }}>{e.reason}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, color: "#64748b" }}>Re-baselining captures current positions and logs the reason.</span>
+                <button onClick={clearBaseline} style={{ padding: "8px 14px", borderRadius: 9, border: "1px solid #7f1d1d", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "#fca5a5", background: "transparent" }}>Remove baseline</button>
+              </div>
             </div>
           </div>
         )}
 
         {editId !== null && (
-          <div onClick={() => setEditId(null)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 580, width: "100%", padding: 20 }}>
-              <h3 style={{ margin: "0 0 12px" }}>Edit Task</h3>
-              <div style={{ display: "grid", gap: 10 }}>
-                <input style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <input style={inputStyle} value={editForm.owner} onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })} />
-                  <select style={inputStyle} value={editForm.phase} onChange={(e) => setEditForm({ ...editForm, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+          <div onClick={() => setEditId(null)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 55, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 580, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Task</div>
+                <button onClick={() => setEditId(null)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+              </div>
+              <div style={{ padding: 20, display: "grid", gap: 12, overflow: "auto" }}>
+                <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={editForm.owner} onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={editForm.phase} onChange={(e) => setEditForm({ ...editForm, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-                  <input type="number" style={inputStyle} value={editForm.startWeek} onChange={(e) => setEditForm({ ...editForm, startWeek: e.target.value })} />
-                  <input type="number" style={inputStyle} value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
-                  <input type="number" style={inputStyle} value={editForm.pct} onChange={(e) => editSetPct(e.target.value)} />
-                  <select style={inputStyle} value={editForm.status} onChange={(e) => editSetStatus(e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1.2fr", gap: 12 }}>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Start week</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.startWeek} onChange={(e) => setEditForm({ ...editForm, startWeek: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Weeks</div><input type="number" min="1" max={nW} style={inputStyle} value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>% done</div><input type="number" min="0" max="100" style={inputStyle} value={editForm.pct} onChange={(e) => editSetPct(e.target.value)} /></div>
+                  <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Status</div><select style={inputStyle} value={editForm.status} onChange={(e) => editSetStatus(e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Dependencies</div>
-                  <div style={{ maxHeight: 120, overflow: "auto", background: "#0b1220", padding: 8, borderRadius: 8 }}>
-                    {project.tasks.filter((t) => t.id !== editId).map((t) => (
-                      <label key={t.id} style={{ display: "flex", gap: 6, fontSize: 12, margin: "2px 0" }}>
-                        <input type="checkbox" checked={editForm.deps.includes(t.id)} disabled={editSucc.has(t.id)} onChange={() => toggleDep(t.id)} /> {t.name}
-                      </label>
-                    ))}
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Depends on (these must finish first)</div>
+                  <div style={{ maxHeight: 150, overflow: "auto", border: "1px solid #2a3650", borderRadius: 8, padding: 8, background: "#0b1220", display: "flex", flexDirection: "column", gap: 4 }}>
+                    {project.tasks.filter((t) => t.id !== editId).length === 0 ? <span style={{ fontSize: 12, color: "#64748b" }}>No other tasks yet.</span> :
+                      project.tasks.filter((t) => t.id !== editId).map((t) => {
+                        const blocked = editSucc.has(t.id);
+                        const checked = editForm.deps.includes(t.id);
+                        const dph = phOf(t.phase);
+                        return (
+                          <label key={t.id} title={blocked ? "Would create a circular dependency" : ""} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: blocked ? "#475569" : "#cbd5e1", cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.5 : 1 }}>
+                            <input type="checkbox" checked={checked} disabled={blocked} onChange={() => toggleDep(t.id)} />
+                            <span style={{ width: 8, height: 8, borderRadius: 3, background: phGrad(dph), flexShrink: 0 }} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                            <span style={{ color: "#475569", fontSize: 10 }}>· {dph.short} · W{t.startWeek}–W{Math.min(t.startWeek + t.duration - 1, nW)}</span>
+                          </label>
+                        );
+                      })}
                   </div>
                 </div>
+                <div style={{ fontSize: 11, color: "#475569" }}>% and status sync (0% = Planned, 100% = Done). Dependencies are finish-to-start; connector arrows are drawn on the exported one-pager (Task detail view).</div>
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
-                <button onClick={() => setEditId(null)} style={planBtn}>Cancel</button>
-                <button onClick={saveEdit} style={{ ...planBtn, background: "#334155" }}>Save</button>
+              <div style={{ padding: "14px 22px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={() => setEditId(null)} style={{ padding: "9px 18px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>Cancel</button>
+                <button onClick={saveEdit} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>Save changes</button>
               </div>
             </div>
           </div>
         )}
 
         {showHelp && (
-          <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 600, width: "100%", padding: 24 }}>
-              <h3>Help & Support</h3>
-              <p>This is the custom enterprise-grade Sompo SDLC Delivery Analytics Planner dashboard. Data maps are securely committed exclusively to your browser's private isolated storage cache ecosystem.</p>
-              <button onClick={() => setShowHelp(false)} style={planBtn}>Close</button>
+          <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 680, width: "100%", maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontWeight: 800, fontSize: 17, background: "linear-gradient(90deg,#f1f5f9,#a5b4fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Help &amp; About</div>
+                <button onClick={() => setShowHelp(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
+              </div>
+              <div style={{ overflow: "auto", padding: "18px 24px", fontSize: 13, lineHeight: 1.6, color: "#cbd5e1" }}>
+                <p style={{ margin: "0 0 4px" }}>A reusable planner and delivery tracker for IT / SDLC projects: lay out tasks across lifecycle phases, track % complete, RAG health, baseline slippage and dependencies, mark milestones, and export a slide-ready one-pager.</p>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Managing plans</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Switch between projects with the <b>Plan</b> dropdown; <b>＋ New</b>, <b>⧉ Duplicate</b>, <b>🗑 Delete</b>. Click the title to rename.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Building &amp; tracking</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Set <b>start date</b> and <b>duration</b>; columns and axis scale adjust automatically.</li>
+                  <li><b>+ Add Task</b> (name, owner, phase, start, weeks, % done) and <b>◆ Add Milestone</b>.</li>
+                  <li>Each bar <b>fills to its % complete</b>. Click a bar to advance status, or use <b>✎</b> to edit, including %, status, and dependencies.</li>
+                  <li><b>% and status sync:</b> 0% = Planned, 1–99% = In Progress, 100% = Done; <b>At Risk</b> is a separate flag.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Dependencies</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>In a task's <b>✎ edit</b> dialog, tick the tasks it <b>depends on</b> (predecessors that must finish first). Circular links are blocked.</li>
+                  <li>The board shows an <b>⟜ after …</b> chip per task, and an amber <b>⚠ before dep</b> warning if a task starts on or before a predecessor finishes.</li>
+                  <li>The exported <b>Task detail</b> one-pager draws connector <b>arrows</b> between linked tasks.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Health &amp; baseline</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>RAG is auto-derived per phase and overall, with a manual override (Auto / G / A / R). Overall progress is the average % across tasks.</li>
+                  <li><b>⚑ Set Baseline</b> captures the approved plan; tasks then show a baseline rail and variance chip. <b>⟳ Re-baseline</b> logs a reason in the <b>📋 Log</b>.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Export &amp; sharing</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li><b>⬇ One-Pager (PPT)</b> → Phase summary or Task detail → PNG / SVG for slides.</li>
+                  <li><b>↥ Export Plan</b> / <b>↧ Import Plan</b> move plans as JSON (e.g. via Teams / SharePoint); imports arrive as new plans.</li>
+                </ul>
+
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Where your data lives</div>
+                <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                  <li>Plans are saved in <b>this browser only</b> (local storage) — not synced across browsers or PCs, nothing sent to any server.</li>
+                  <li><b>Clearing the browser's site data will erase your plans.</b> Export anything important first.</li>
+                  <li>To move to another PC: export each plan, then import the files on the other machine.</li>
+                </ul>
+              </div>
+              <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <a href="https://github.com/hongyet-tay/sdlc-planner" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#818cf8", textDecoration: "none", fontWeight: 600 }}>↗ View project &amp; docs on GitHub</a>
+                <span style={{ fontSize: 11, color: "#475569" }}>SDLC Project Planner</span>
+              </div>
             </div>
           </div>
         )}
 
         {showExport && (
           <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
               <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo Executive One-Pager Exporter</div>
-                <button onClick={() => setExportMode(exportMode === "phase" ? "task" : "phase")} style={planBtn}>Toggle View ({exportMode})</button>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>One-Pager Timeline for PowerPoint</div>
+                <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
+                  {[["phase", "Phase summary"], ["task", "Task detail"]].map(([m, lbl]) => (
+                    <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (exportMode === m ? "#6366f1" : "#334155"), background: exportMode === m ? "rgba(99,102,241,0.3)" : "transparent", color: exportMode === m ? "#c7d2fe" : "#94a3b8" }}>{lbl}</button>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>{scaleName} axis</span>
                 <div style={{ flex: 1 }} />
-                <button onClick={downloadPNG} style={{ ...planBtn, background: "#334155" }}>⬇ PNG</button>
-                <button onClick={downloadSVG} style={planBtn}>⬇ SVG</button>
-                <button onClick={() => setShowExport(false)} style={planBtn}>✕</button>
+                <button onClick={downloadPNG} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}>⬇ PNG (for PPT)</button>
+                <button onClick={downloadSVG} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "transparent" }}>⬇ SVG</button>
+                <button onClick={() => setShowExport(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>✕</button>
               </div>
               <div style={{ overflow: "auto", padding: 18, background: "#1e293b" }}>
-                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
+                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
+              </div>
+              <div style={{ padding: "10px 22px", fontSize: 11.5, color: "#64748b", borderTop: "1px solid #1e293b" }}>
+                Tip: download PNG, then in PowerPoint → Insert → Pictures. Task detail view shows % fills, the baseline rail, and dependency arrows. Exported at 2× resolution.
               </div>
             </div>
           </div>
         )}
 
-        {toast && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: "1px solid #334155", padding: "12px 22px", borderRadius: 12, zIndex: 60 }}>{toast}</div>}
+        {toast && (
+          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: "1px solid #334155", color: "#e2e8f0", padding: "12px 22px", borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>{toast}</div>
+        )}
       </div>
     </div>
   );
