@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SOMPO · SDLC Project Planner</title>
+<title>Sompo SDLC Project Planner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -21,13 +21,6 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
-
-/* ---- SOMPO brand ---- */
-const ACC = "#D6001C", ACCd = "#A30015", ACCb = "#E4002B";
-const ACCgrad = `linear-gradient(135deg,${ACC},${ACCd})`;
-const ACCtint = "rgba(214,0,28,0.22)";
-const ACCedge = "#7f1020";
-const ACCtext = "#ffb0b8";
 
 const PHASES = [
   { id: "initiation", name: "Initiation", short: "Init", color: "#818cf8", c1: "#6366f1", c2: "#818cf8" },
@@ -194,6 +187,7 @@ function SDLCPlanner() {
   const atRisk = project.tasks.filter((t) => t.status === "At Risk").length;
   const avgPct = project.tasks.length ? Math.round(project.tasks.reduce((s, t) => s + (t.pct || 0), 0) / project.tasks.length) : 0;
 
+  // dependency helpers
   const successorsClosure = (startId) => {
     const res = new Set();
     const visit = (id) => { project.tasks.forEach((t) => { if ((t.deps || []).includes(id) && !res.has(t.id)) { res.add(t.id); visit(t.id); } }); };
@@ -292,7 +286,7 @@ function SDLCPlanner() {
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
-    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_plan.json";
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_plan.json";
     a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     flash("Plan exported as JSON");
@@ -319,7 +313,7 @@ function SDLCPlanner() {
     const W = 1280, chartX = 320, chartR = 44;
     const chartW = W - chartX - chartR;
     const wkW = chartW / nW;
-    const headerH = 118, ragBandH = 46, axisH = 80, footerH = 60;
+    const headerH = 104, ragBandH = 46, axisH = 80, footerH = 58;
     const axisTop = headerH + ragBandH;
     let rows = [];
     if (mode === "phase") {
@@ -396,7 +390,7 @@ function SDLCPlanner() {
     let rowSvg = "";
     rows.forEach((r, i) => {
       const y = chartTop + i * rowH;
-      if (i % 2 === 1) rowSvg += `<rect x="20" y="${y}" width="${W - 40}" height="${rowH}" fill="#fdf2f4"/>`;
+      if (i % 2 === 1) rowSvg += `<rect x="20" y="${y}" width="${W - 40}" height="${rowH}" fill="#f8fafc"/>`;
       const labelY = y + rowH / 2;
       rowSvg += `<text x="${chartX - 16}" y="${labelY - 2}" text-anchor="end" font-size="${mode === "phase" ? 14 : 12}" font-weight="700" fill="#1e293b">${esc(r.label.length > 34 ? r.label.slice(0, 33) + "…" : r.label)}</text>`;
       rowSvg += `<text x="${chartX - 16}" y="${labelY + 12}" text-anchor="end" font-size="10.5" fill="#64748b">${esc(r.sub)}</text>`;
@@ -420,6 +414,7 @@ function SDLCPlanner() {
       if (r.risk) rowSvg += `<text x="${chartX + chartW + 6}" y="${labelY + 4}" font-size="14" fill="#ef4444">⚠</text>`;
     });
 
+    // dependency arrows (task view)
     let depCount = 0;
     if (mode === "task") {
       const idx = {}; rows.forEach((r, i) => { if (r.id != null) idx[r.id] = i; });
@@ -445,21 +440,30 @@ function SDLCPlanner() {
     const range = project.startDate ? `${weekLabel(1)} – ${weekLabel(nW)} ${weekDate(nW) ? weekDate(nW).getFullYear() : ""}` : `${nW} weeks`;
     const healthTxt = `Health: ${ov.label}${project.ragOverride ? " (manual)" : ""}`;
     const baseTxt = project.baseline ? ` · Baseline: ${fmtDate(project.baseline.capturedAt)}` : "";
+    
+    // Sompo clean vector logo definition for the SVG target image
+    const sompoLogoSvg = `
+      <g transform="translate(32, 28)">
+        <circle cx="16" cy="16" r="14" fill="#1e293b"/>
+        <path d="M 11 16 Q 16 9 21 16 Q 16 23 11 16 Z" fill="#ffffff"/>
+        <circle cx="16" cy="16" r="3" fill="#ef4444"/>
+        <text x="38" y="22" font-size="18" font-weight="900" fill="#0f172a" letter-spacing="0.5">SOMPO</text>
+      </g>
+    `;
+
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, system-ui, sans-serif">
-<defs>${defs}<linearGradient id="g_hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${ACCd}"/><stop offset="0.5" stop-color="${ACC}"/><stop offset="1" stop-color="${ACCb}"/></linearGradient></defs>
+<defs>${defs}<linearGradient id="g_hdr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1e293b"/><stop offset="0.5" stop-color="#334155"/><stop offset="1" stop-color="#475569"/></linearGradient></defs>
 <rect width="${W}" height="${H}" fill="#ffffff"/>
 <rect x="0" y="0" width="${W}" height="6" fill="url(#g_hdr)"/>
-<text x="32" y="38" font-size="20" font-weight="900" letter-spacing="1.5" fill="${ACC}">SOMPO</text>
-<rect x="120" y="24" width="1.5" height="18" fill="#cbd5e1"/>
-<text x="134" y="38" font-size="11" font-weight="700" letter-spacing="2" fill="#94a3b8">IT DELIVERY</text>
-<text x="32" y="72" font-size="26" font-weight="800" fill="#0f172a">${esc(project.name)}</text>
-<text x="32" y="96" font-size="12.5" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
-<text x="${W - 36}" y="52" text-anchor="end" font-size="32" font-weight="800" fill="${ACC}">${avgPct}%</text>
-<text x="${W - 36}" y="74" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
+${sompoLogoSvg}
+<text x="32" y="78" font-size="24" font-weight="800" fill="#0f172a">${esc(project.name)}</text>
+<text x="32" y="98" font-size="12" fill="#64748b">Project Timeline · ${esc(range)} · ${nW} weeks · ${scaleName} scale · ${esc(healthTxt)}${esc(baseTxt)} · ${mode === "phase" ? "Phase view" : "Task view"}</text>
+<text x="${W - 36}" y="48" text-anchor="end" font-size="30" font-weight="800" fill="#1e293b">${avgPct}%</text>
+<text x="${W - 36}" y="68" text-anchor="end" font-size="12" fill="#64748b">avg complete · ${done}/${project.tasks.length} done${atRisk ? ` · ${atRisk} at risk` : ""}</text>
 ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 <line x1="20" y1="${H - footerH}" x2="${W - 20}" y2="${H - footerH}" stroke="#e2e8f0"/>
 <text x="32" y="${H - footerH + 26}" font-size="11.5" fill="#475569">${esc(counts)}</text>
-<text x="${W - 36}" y="${H - footerH + 26}" text-anchor="end" font-size="10.5" fill="#94a3b8">SOMPO · Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</text>
+<text x="${W - 36}" y="${H - footerH + 26}" text-anchor="end" font-size="10.5" fill="#94a3b8">SOMPO Delivery Analytics · Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</text>
 </svg>`;
   };
 
@@ -477,7 +481,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
         ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
         const a = document.createElement("a");
-        a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.png";
+        a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_timeline.png";
         a.href = c.toDataURL("image/png"); a.click();
       } catch (e) { console.error("PNG export failed", e); }
       URL.revokeObjectURL(url);
@@ -489,7 +493,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
     const svg = buildOnePager(exportMode);
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const a = document.createElement("a");
-    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_timeline.svg";
+    a.download = (project.name || "project").replace(/[^\w]+/g, "_") + "_sompo_timeline.svg";
     a.href = URL.createObjectURL(blob); a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
@@ -499,20 +503,23 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
   const boardMinWidth = 220 + nW * colMin;
   const inputStyle = { background: "#111827", border: "1px solid #2a3650", borderRadius: 8, padding: "8px 10px", color: "#e2e8f0", fontSize: 13, outline: "none", width: "100%" };
   const previewSvg = showExport ? buildOnePager(exportMode).replace(/width="1280" height="\d+"/, `width="100%"`) : "";
-  const ovBtns = [{ v: null, l: "Auto", c: ACC }, { v: "Green", l: "G", c: "#22c55e" }, { v: "Amber", l: "A", c: "#f59e0b" }, { v: "Red", l: "R", c: "#ef4444" }];
+  const ovBtns = [{ v: null, l: "Auto", c: "#6366f1" }, { v: "Green", l: "G", c: "#22c55e" }, { v: "Amber", l: "A", c: "#f59e0b" }, { v: "Red", l: "R", c: "#ef4444" }];
   const planBtn = { padding: "7px 13px", borderRadius: 9, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" };
   const editSucc = editId !== null ? successorsClosure(editId) : new Set();
-  const selBtn = (active) => ({ border: "1px solid " + (active ? ACC : "#2a3650"), background: active ? ACCtint : "transparent", color: active ? ACCtext : "#94a3b8" });
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(214,0,28,0.16), transparent), radial-gradient(900px 500px at -10% 110%, rgba(214,0,28,0.08), transparent), #0a0e1a", color: "#e2e8f0", padding: "0 0 60px" }}>
-      <div style={{ height: 5, background: `linear-gradient(90deg,${ACCd},${ACC},${ACCb})` }} />
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "22px 20px 0" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(1200px 600px at 80% -10%, rgba(51,65,85,0.25), transparent), radial-gradient(900px 500px at -10% 110%, rgba(15,23,42,0.3), transparent), #0a0e1a", color: "#e2e8f0", padding: "24px 20px 60px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "10px 14px", marginBottom: 18 }}>
-          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1.5, color: ACC }}>SOMPO</span>
-          <span style={{ width: 1, height: 18, background: "#334155" }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1, color: "#94a3b8" }}>Plan</span>
+          {/* Sompo Corporate Identity Tag inside main controls bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 12, paddingRight: 14, borderRight: "1px solid #1e293b" }}>
+            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 900, color: "#ffffff", letterSpacing: "0.5px" }}>SOMPO</span>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Plan</span>
           <select value={currentId} onChange={(e) => switchPlan(e.target.value)} style={{ ...inputStyle, width: "auto", minWidth: 220, maxWidth: 360, fontWeight: 700, padding: "7px 10px" }}>
             {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -526,11 +533,11 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: ACC, fontWeight: 800, marginBottom: 6 }}>SDLC Project Planner</div>
+            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#94a3b8", fontWeight: 700, marginBottom: 6 }}>SDLC Project Planner</div>
             {editingName ? (
               <input autoFocus value={project.name} onChange={(e) => setProject((p) => ({ ...p, name: e.target.value }))} onBlur={() => setEditingName(false)} onKeyDown={(e) => e.key === "Enter" && setEditingName(false)} style={{ ...inputStyle, fontSize: 26, fontWeight: 800, width: 420, maxWidth: "80vw" }} />
             ) : (
-              <h1 onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 30, fontWeight: 800, margin: 0, cursor: "pointer", background: `linear-gradient(90deg,#ffffff,#ff6b78)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <h1 onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 30, fontWeight: 800, margin: 0, cursor: "pointer", background: "linear-gradient(90deg,#f1f5f9,#cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 {project.name} <span style={{ fontSize: 14, WebkitTextFillColor: "#475569" }}>✎</span>
               </h1>
             )}
@@ -540,16 +547,16 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               <label style={{ fontSize: 12, color: "#94a3b8" }}>Duration (weeks):</label>
               <input type="number" min="1" max={MAX_WEEKS} value={weeksInput} onChange={(e) => setWeeksInput(e.target.value)} onBlur={(e) => applyWeeks(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyWeeks(e.target.value)} style={{ ...inputStyle, width: 76, padding: "5px 8px", textAlign: "center", fontWeight: 700 }} />
               {[12, 16, 24, 36, 52].map((n) => (
-                <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", ...selBtn(project.weeks === n) }}>{n}w</button>
+                <button key={n} onClick={() => applyWeeks(n)} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (project.weeks === n ? "#475569" : "#2a3650"), background: project.weeks === n ? "rgba(255,255,255,0.1)" : "transparent", color: project.weeks === n ? "#ffffff" : "#94a3b8" }}>{n}w</button>
               ))}
               <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>Axis: {scaleName} (auto)</span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {[
-              { label: "Avg Progress", value: avgPct + "%", sub: `${done}/${project.tasks.length} done`, grad: ACCgrad },
+              { label: "Avg Progress", value: avgPct + "%", sub: `${done}/${project.tasks.length} done`, grad: "linear-gradient(135deg,#e2e8f0,#94a3b8)" },
               { label: "At Risk", value: atRisk, sub: atRisk ? "needs attention" : "all clear", grad: atRisk ? "linear-gradient(135deg,#ef4444,#f97316)" : "linear-gradient(135deg,#22c55e,#4ade80)" },
-              { label: "Milestones", value: project.milestones.length, sub: "tracked", grad: "linear-gradient(135deg,#ec4899,#f472b6)" },
+              { label: "Milestones", value: project.milestones.length, sub: "tracked", grad: "linear-gradient(135deg,#94a3b8,#475569)" },
             ].map((k) => (
               <div key={k.label} style={{ background: "rgba(17,24,39,0.7)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 18px", minWidth: 110 }}>
                 <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{k.label}</div>
@@ -561,7 +568,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
         </div>
 
         <div style={{ height: 8, background: "#1e293b", borderRadius: 99, overflow: "hidden", marginBottom: 18 }}>
-          <div style={{ height: "100%", width: avgPct + "%", background: `linear-gradient(90deg,${ACCd},${ACC},${ACCb})`, borderRadius: 99, transition: "width .6s ease" }} />
+          <div style={{ height: "100%", width: avgPct + "%", background: "linear-gradient(90deg,#475569,#94a3b8,#e2e8f0)", borderRadius: 99, transition: "width .6s ease" }} />
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", background: "rgba(17,24,39,0.6)", border: "1px solid #1e293b", borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
@@ -610,27 +617,27 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             <>
               <span style={{ fontSize: 12.5, color: "#94a3b8" }}>Not set — capture the current plan as the approved baseline to track slippage against.</span>
               <div style={{ flex: 1 }} />
-              <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: ACCgrad, fontWeight: 700 }}>⚑ Set Baseline</button>
+              <button onClick={setBaseline} style={{ ...planBtn, color: "#fff", border: "none", background: "linear-gradient(135deg,#475569,#334155)", fontWeight: 700 }}>⚑ Set Baseline</button>
             </>
           )}
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 18 }}>
-          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad, boxShadow: `0 4px 14px ${ACC}55` }}>+ Add Task</button>
+          <button onClick={() => { setShowAdd(!showAdd); setShowMs(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#334155,#1e293b)", boxShadow: "0 4px 14px rgba(30,41,59,0.4)" }}>+ Add Task</button>
           <button onClick={() => { setShowMs(!showMs); setShowAdd(false); }} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>◆ Add Milestone</button>
-          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: `linear-gradient(135deg,${ACCb},${ACC})`, boxShadow: `0 4px 14px ${ACC}55` }}>⬇ One-Pager (PPT)</button>
+          <button onClick={() => setShowExport(true)} style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#1e293b)", boxShadow: "0 4px 14px rgba(71,85,105,0.4)" }}>⬇ One-Pager (PPT)</button>
           <button onClick={exportJSON} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↥ Export Plan</button>
           <button onClick={() => fileRef.current && fileRef.current.click()} style={{ padding: "9px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "rgba(30,41,59,0.6)" }}>↧ Import Plan</button>
           <input ref={fileRef} type="file" accept="application/json,.json" onChange={importJSON} style={{ display: "none" }} />
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: "#64748b" }}>Owner:</span>
           {owners.map((o) => (
-            <button key={o} onClick={() => setFilterOwner(o)} style={{ padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", ...selBtn(filterOwner === o) }}>{o}</button>
+            <button key={o} onClick={() => setFilterOwner(o)} style={{ padding: "6px 12px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid " + (filterOwner === o ? "#94a3b8" : "#2a3650"), background: filterOwner === o ? "rgba(255,255,255,0.15)" : "transparent", color: filterOwner === o ? "#ffffff" : "#94a3b8" }}>{o}</button>
           ))}
         </div>
 
         {showAdd && (
-          <div style={{ background: "rgba(17,24,39,0.85)", border: `1px solid ${ACCedge}`, borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
+          <div style={{ background: "rgba(17,24,39,0.85)", border: "1px solid #334155", borderRadius: 14, padding: 16, marginBottom: 18, display: "grid", gridTemplateColumns: "1.8fr 1fr 1.1fr 0.6fr 0.6fr 0.6fr auto", gap: 10, alignItems: "end" }}>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Task name</div><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sprint 3 — Reporting" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Owner</div><input style={inputStyle} value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} placeholder="e.g. Dev Team" /></div>
             <div><div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Phase</div><select style={inputStyle} value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value })}>{PHASES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
@@ -712,7 +719,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                               <span>{t.owner}</span>
                               <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, color: st.text, background: st.dot + "22", border: `1px solid ${st.dot}66`, whiteSpace: "nowrap" }}>{t.status === "Done" ? "✓ Done" : t.status}{t.status === "In Progress" ? ` ${t.pct}%` : ""}</span>
                               {v !== null && v !== 0 && <span title={v > 0 ? `${v} week(s) later than baseline` : `${-v} week(s) earlier than baseline`} style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: v > 0 ? "#fca5a5" : "#86efac", background: v > 0 ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", border: `1px solid ${v > 0 ? "#7f1d1d" : "#14532d"}` }}>{v > 0 ? `+${v}w` : `${v}w`}</span>}
-                              {depNames.length > 0 && <span title={"After: " + depNames.join(", ")} style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: ACCtext, background: ACCtint, border: `1px solid ${ACCedge}`, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>⟜ after {depNames.length > 1 ? `${depNames[0]} +${depNames.length - 1}` : depNames[0]}</span>}
+                              {depNames.length > 0 && <span title={"After: " + depNames.join(", ")} style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#c7d2fe", background: "rgba(99,102,241,0.15)", border: "1px solid #3730a3", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis" }}>⟜ after {depNames.length > 1 ? `${depNames[0]} +${depNames.length - 1}` : depNames[0]}</span>}
                               {viol && <span title="This task starts on or before a predecessor finishes" style={{ fontSize: 9, fontWeight: 800, padding: "1px 7px", borderRadius: 99, whiteSpace: "nowrap", color: "#fcd34d", background: "rgba(245,158,11,0.15)", border: "1px solid #92400e" }}>⚠ before dep</span>}
                             </div>
                           </div>
@@ -748,8 +755,8 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
             </span>
           ))}
           {project.baseline && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}><span style={{ width: 18, height: 3, borderRadius: 99, background: "rgba(148,163,184,0.85)" }} />Baseline</span>}
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: ACCtext }}>⟜ depends on (see export for arrows)</span>
-          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Saved in this browser</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#c7d2fe" }}>⟜ depends on (see export for arrows)</span>
+          <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>Bar fill = % complete · Sompo Local Storage Sync</span>
         </div>
 
         {showBaselineLog && (
@@ -766,9 +773,9 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                     const isCurrent = i === 0;
                     return (
                       <div key={i} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: i < baseLog.length - 1 ? "1px solid #1e293b" : "none" }}>
-                        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 99, background: isCurrent ? ACCgrad : "#1e293b", color: isCurrent ? "#fff" : "#94a3b8", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx}</div>
+                        <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 99, background: isCurrent ? "linear-gradient(135deg,#475569,#1e293b)" : "#1e293b", color: isCurrent ? "#fff" : "#94a3b8", fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>{idx}</div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#e2e8f0" }}>{fmtDate(e.at)} {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: ACCtext, marginLeft: 6 }}>CURRENT</span>}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#e2e8f0" }}>{fmtDate(e.at)} {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", marginLeft: 6 }}>CURRENT</span>}</div>
                           <div style={{ fontSize: 12.5, color: "#cbd5e1", marginTop: 2 }}>{e.reason}</div>
                         </div>
                       </div>
@@ -826,7 +833,7 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
               </div>
               <div style={{ padding: "14px 22px", borderTop: "1px solid #1e293b", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button onClick={() => setEditId(null)} style={{ padding: "9px 18px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>Cancel</button>
-                <button onClick={saveEdit} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad }}>Save changes</button>
+                <button onClick={saveEdit} style={{ padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#334155)" }}>Save changes</button>
               </div>
             </div>
           </div>
@@ -836,18 +843,18 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <div onClick={() => setShowHelp(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 58, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 680, width: "100%", maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
               <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 16, fontWeight: 900, letterSpacing: 1, color: ACC }}>SOMPO</span><span style={{ fontWeight: 800, fontSize: 16, color: "#e2e8f0" }}>Help &amp; About</span></div>
+                <div style={{ fontWeight: 800, fontSize: 17, background: "linear-gradient(90deg,#f1f5f9,#cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Help &amp; About</div>
                 <button onClick={() => setShowHelp(false)} style={{ border: "1px solid #334155", background: "transparent", color: "#94a3b8", borderRadius: 8, cursor: "pointer", padding: "4px 10px", fontSize: 13 }}>✕</button>
               </div>
               <div style={{ overflow: "auto", padding: "18px 24px", fontSize: 13, lineHeight: 1.6, color: "#cbd5e1" }}>
-                <p style={{ margin: "0 0 4px" }}>A reusable planner and delivery tracker for IT / SDLC projects: lay out tasks across lifecycle phases, track % complete, RAG health, baseline slippage and dependencies, mark milestones, and export a slide-ready one-pager.</p>
+                <p style={{ margin: "0 0 4px" }}>A reusable planner and delivery tracker for Sompo IT / SDLC projects: lay out tasks across lifecycle phases, track % complete, RAG health, baseline slippage and dependencies, mark milestones, and export a slide-ready one-pager.</p>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Managing plans</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Managing plans</div>
                 <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
                   <li>Switch between projects with the <b>Plan</b> dropdown; <b>＋ New</b>, <b>⧉ Duplicate</b>, <b>🗑 Delete</b>. Click the title to rename.</li>
                 </ul>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Building &amp; tracking</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Building &amp; tracking</div>
                 <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
                   <li>Set <b>start date</b> and <b>duration</b>; columns and axis scale adjust automatically.</li>
                   <li><b>+ Add Task</b> (name, owner, phase, start, weeks, % done) and <b>◆ Add Milestone</b>.</li>
@@ -855,22 +862,22 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                   <li><b>% and status sync:</b> 0% = Planned, 1–99% = In Progress, 100% = Done; <b>At Risk</b> is a separate flag.</li>
                 </ul>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Dependencies</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Dependencies</div>
                 <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>In a task's <b>✎ edit</b> dialog, tick the tasks it <b>depends on</b> (predecessors). Circular links are blocked.</li>
-                  <li>The board shows an <b>⟜ after …</b> chip, and an amber <b>⚠ before dep</b> warning if a task starts on or before a predecessor finishes.</li>
+                  <li>In a task's <b>✎ edit</b> dialog, tick the tasks it <b>depends on</b> (predecessors that must finish first). Circular links are blocked.</li>
+                  <li>The board shows an <b>⟜ after …</b> chip per task, and an amber <b>⚠ before dep</b> warning if a task starts on or before a predecessor finishes.</li>
                   <li>The exported <b>Task detail</b> one-pager draws connector <b>arrows</b> between linked tasks.</li>
                 </ul>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Health &amp; baseline</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Health &amp; baseline</div>
                 <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li>RAG is auto-derived per phase and overall, with a manual override. Overall progress is the average % across tasks.</li>
+                  <li>RAG is auto-derived per phase and overall, with a manual override (Auto / G / A / R). Overall progress is the average % across tasks.</li>
                   <li><b>⚑ Set Baseline</b> captures the approved plan; tasks then show a baseline rail and variance chip. <b>⟳ Re-baseline</b> logs a reason in the <b>📋 Log</b>.</li>
                 </ul>
 
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACC, textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Export &amp; sharing</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, margin: "16px 0 6px" }}>Export &amp; sharing</div>
                 <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                  <li><b>⬇ One-Pager (PPT)</b> → Phase summary or Task detail → PNG / SVG for slides (SOMPO-branded).</li>
+                  <li><b>⬇ One-Pager (PPT)</b> → Phase summary or Task detail → PNG / SVG for slides.</li>
                   <li><b>↥ Export Plan</b> / <b>↧ Import Plan</b> move plans as JSON (e.g. via Teams / SharePoint); imports arrive as new plans.</li>
                 </ul>
 
@@ -882,8 +889,8 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 </ul>
               </div>
               <div style={{ padding: "12px 24px", borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <a href="https://github.com/hongyet-tay/sdlc-planner" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: ACCtext, textDecoration: "none", fontWeight: 600 }}>↗ View project &amp; docs on GitHub</a>
-                <span style={{ fontSize: 11, color: "#475569" }}>SOMPO · IT Delivery</span>
+                <span style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600 }}>Sompo Enterprise Edition</span>
+                <span style={{ fontSize: 11, color: "#475569" }}>SDLC Project Planner</span>
               </div>
             </div>
           </div>
@@ -893,15 +900,15 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
           <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 18, maxWidth: 1100, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
               <div style={{ padding: "16px 22px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #1e293b", flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>One-Pager Timeline for PowerPoint</div>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Sompo One-Pager Timeline for PowerPoint</div>
                 <div style={{ display: "flex", gap: 6, marginLeft: 8 }}>
                   {[["phase", "Phase summary"], ["task", "Task detail"]].map(([m, lbl]) => (
-                    <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", ...selBtn(exportMode === m) }}>{lbl}</button>
+                    <button key={m} onClick={() => setExportMode(m)} style={{ padding: "6px 14px", borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (exportMode === m ? "#475569" : "#334155"), background: exportMode === m ? "rgba(255,255,255,0.15)" : "transparent", color: exportMode === m ? "#ffffff" : "#94a3b8" }}>{lbl}</button>
                   ))}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: "rgba(45,212,191,0.15)", border: "1px solid rgba(45,212,191,0.4)", color: "#5eead4" }}>{scaleName} axis</span>
                 <div style={{ flex: 1 }} />
-                <button onClick={downloadPNG} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: ACCgrad }}>⬇ PNG (for PPT)</button>
+                <button onClick={downloadPNG} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", background: "linear-gradient(135deg,#475569,#334155)" }}>⬇ PNG (for PPT)</button>
                 <button onClick={downloadSVG} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#e2e8f0", background: "transparent" }}>⬇ SVG</button>
                 <button onClick={() => setShowExport(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #334155", cursor: "pointer", fontWeight: 600, fontSize: 13, color: "#94a3b8", background: "transparent" }}>✕</button>
               </div>
@@ -909,14 +916,14 @@ ${ragSvg}${grid}${msSvg}${todaySvg}${rowSvg}
                 <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.4)" }} dangerouslySetInnerHTML={{ __html: previewSvg }} />
               </div>
               <div style={{ padding: "10px 22px", fontSize: 11.5, color: "#64748b", borderTop: "1px solid #1e293b" }}>
-                Tip: download PNG, then in PowerPoint → Insert → Pictures. Task detail view shows % fills, the baseline rail, and dependency arrows. Exported at 2× resolution, SOMPO-branded.
+                Tip: download PNG, then in PowerPoint → Insert → Pictures. Task detail view shows % fills, the baseline rail, and dependency arrows. Exported at 2× resolution.
               </div>
             </div>
           </div>
         )}
 
         {toast && (
-          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: `1px solid ${ACCedge}`, color: "#e2e8f0", padding: "12px 22px", borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>{toast}</div>
+          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1e293b", border: "1px solid #334155", color: "#e2e8f0", padding: "12px 22px", borderRadius: 12, fontSize: 13, fontWeight: 600, zIndex: 60, boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>{toast}</div>
         )}
       </div>
     </div>
